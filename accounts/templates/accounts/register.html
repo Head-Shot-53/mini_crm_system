@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="text-xl font-bold mb-4">Реєстрація</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Зареєструватися</button>
+</form>
+<p class="mt-4">Вже маєш акаунт? <a href="{% url 'login' %}" class="text-blue-600 underline">Увійди</a></p>
+{% endblock %}
