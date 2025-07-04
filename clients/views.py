@@ -1,11 +1,14 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Client
 from .forms import ClientForm
+from django.contrib.auth.decorators import login_required
 
+@login_required
 def client_list(request):
     clients = Client.objects.all().order_by('-created_at')
     return render(request, 'clients/client_list.html', {'clients':clients})
 
+@login_required
 def client_create(request):
     if request.method == 'POST':
         form = ClientForm(request.POST)
@@ -16,6 +19,7 @@ def client_create(request):
         form = ClientForm
     return render(request, 'clients/client_form.html', {'form':form})
 
+@login_required
 def client_update(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == 'POST':
@@ -27,6 +31,7 @@ def client_update(request, pk):
         form = ClientForm(instance=client)
     return render(request, 'clients/client_form.html', {'form':form})
 
+@login_required
 def client_delete(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == 'POST':
