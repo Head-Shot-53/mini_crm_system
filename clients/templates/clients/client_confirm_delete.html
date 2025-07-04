@@ -1,0 +1,8 @@
+<h1>Видалити клієнта</h1>
+<p>Точно видалити "{{ client.name }}"?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Так, видалити</button>
+</form>
+<a href="{% url 'client_list' %}">Скасувати</a>
