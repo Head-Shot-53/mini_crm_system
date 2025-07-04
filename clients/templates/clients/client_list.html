@@ -1,0 +1,11 @@
+<h1>Клієнти</h1>
+<a href="{% url 'client_create' %}">Додати клієнта</a>
+<ul>
+    {% for client in clients %}
+        <li>
+            <strong>{{ client.name }}</strong> – {{ client.status }} <br>
+            <a href="{% url 'client_update' client.pk %}">Редагувати</a> |
+            <a href="{% url 'client_delete' client.pk %}">Видалити</a>
+        </li>
+    {% endfor %}
+</ul>
