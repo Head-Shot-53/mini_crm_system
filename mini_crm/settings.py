@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "tailwind",
     'theme',
     # 'django_browser_reload',
+    'accounts',
+    'notes',
 ]
 
 MIDDLEWARE = [
@@ -129,3 +131,5 @@ TAILWIND_APP_NAME = 'theme'
 
 NPM_BIN_PATH = "C:/Program Files/nodejs/npm.cmd"
 
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/accounts/login'
