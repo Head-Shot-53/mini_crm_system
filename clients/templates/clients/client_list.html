@@ -1,11 +1,17 @@
-<h1>Клієнти</h1>
-<a href="{% url 'client_create' %}">Додати клієнта</a>
-<ul>
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Список клієнтів</h1>
+<a href="{% url 'client_create' %}" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+    ➕ Додати клієнта
+</a>
+<ul class="mt-4 space-y-2">
     {% for client in clients %}
-        <li>
-            <strong>{{ client.name }}</strong> – {{ client.status }} <br>
-            <a href="{% url 'client_update' client.pk %}">Редагувати</a> |
-            <a href="{% url 'client_delete' client.pk %}">Видалити</a>
+        <li class="bg-white p-4 rounded shadow">
+            <strong>{{ client.name }}</strong> — {{ client.status }}<br>
+            <a href="{% url 'client_update' client.pk %}" class="text-blue-600 underline">Редагувати</a> |
+            <a href="{% url 'client_delete' client.pk %}" class="text-red-600 underline">Видалити</a>
         </li>
     {% endfor %}
 </ul>
+{% endblock %}
