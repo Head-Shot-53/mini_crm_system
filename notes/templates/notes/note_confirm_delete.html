@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="text-xl font-bold mb-4">Видалити нотатку</h2>
+<p>Точно видалити нотатку "{{ note.title }}"?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded">Так, видалити</button>
+</form>
+<a href="{% url 'client_detail' note.client.id %}" class="text-blue-600 underline">Скасувати</a>
+{% endblock %}

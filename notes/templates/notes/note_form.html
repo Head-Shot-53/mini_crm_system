@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="text-xl font-bold mb-4">{% if form.instance.pk %}Редагувати{% else %}Додати{% endif %} нотатку</h2>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Зберегти</button>
+</form>
+
+<a href="{% url 'client_detail' client.id %}" class="text-blue-600 underline"> Назад до клієнта</a>
+{% endblock %}
