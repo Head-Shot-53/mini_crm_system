@@ -39,3 +39,8 @@ def client_delete(request, pk):
         return redirect('client_list')
     return render(request, 'clients/client_confirm_delete.html', {'client':client})
 
+@login_required
+def client_detail(request, pk):
+    client = get_object_or_404(Client, pk=pk)
+    notes = client.notes.all().order_by('-created_at')
+    return render(request, 'clients/client_detail.html', {'client':client, 'notes':notes})
