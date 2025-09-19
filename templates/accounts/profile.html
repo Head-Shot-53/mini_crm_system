@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Profile | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Teacher Profile</h1>
+
+<p>
+    Email:
+    {{ user.email }}
+</p>
+
+<p>
+    Name:
+    {{ user.first_name }}
+    {{ user.last_name }}
+</p>
+
+<p>
+    Timezone:
+    {{ user.teacher_profile.timezone }}
+</p>
+
+<p>
+    Language:
+    {{ user.teacher_profile.language }}
+</p>
+
+<p>
+    Currency:
+    {{ user.teacher_profile.currency }}
+</p>
+
+<p>
+    Default lesson duration:
+    {{ user.teacher_profile.default_lesson_duration }} minutes
+</p>
+
+<p>
+    Default lesson price:
+    {{ user.teacher_profile.default_lesson_price }}
+    {{ user.teacher_profile.currency }}
+</p>
+
+
+{% if workspace %}
+
+    <h2>Workspace</h2>
+
+    <p>
+        {{ workspace.name }}
+    </p>
+
+{% endif %}
+
+
+<a href="{% url 'accounts:password_change' %}">
+    Change password
+</a>
+
+{% endblock %}

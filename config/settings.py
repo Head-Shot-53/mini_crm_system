@@ -62,7 +62,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -138,3 +138,21 @@ AUTH_USER_MODEL = "accounts.User"
 #Media 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Login Logout
+LOGIN_URL = "accounts:login"
+
+LOGIN_REDIRECT_URL = "accounts:profile"
+
+LOGOUT_REDIRECT_URL = "accounts:login"
+
+#email SMTP
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+
+DEFAULT_FROM_EMAIL = env(
+    "DEFAULT_FROM_EMAIL",
+    default="noreply@lumera.local",
+)
