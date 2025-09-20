@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Edit Profile | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Edit Settings</h1>
+
+
+<form
+    method="post"
+    enctype="multipart/form-data"
+>
+    {% csrf_token %}
+
+
+    <h2>Account</h2>
+
+    {{ user_form.as_p }}
+
+
+    <h2>Teacher Profile</h2>
+
+    {{ profile_form.as_p }}
+
+
+    <h2>Workspace</h2>
+
+    {{ workspace_form.as_p }}
+
+
+    <button type="submit">
+        Save changes
+    </button>
+</form>
+
+
+<p>
+    <a href="{% url 'accounts:profile' %}">
+        Cancel
+    </a>
+</p>
+
+{% endblock %}

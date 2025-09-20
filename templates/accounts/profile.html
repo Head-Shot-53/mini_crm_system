@@ -10,39 +10,61 @@
 
 <h1>Teacher Profile</h1>
 
+{% if user.teacher_profile.avatar %}
+
+    <img
+        src="{{ user.teacher_profile.avatar.url }}"
+        alt="Teacher avatar"
+        width="150"
+    >
+
+{% endif %}
+
+
+<h2>Account</h2>
+
 <p>
-    Email:
+    <strong>Email:</strong>
     {{ user.email }}
 </p>
 
 <p>
-    Name:
+    <strong>Name:</strong>
     {{ user.first_name }}
     {{ user.last_name }}
 </p>
 
+
+<h2>Teaching Settings</h2>
+
 <p>
-    Timezone:
+    <strong>Bio:</strong>
+    {{ user.teacher_profile.bio|default:"—" }}
+</p>
+
+<p>
+    <strong>Timezone:</strong>
     {{ user.teacher_profile.timezone }}
 </p>
 
 <p>
-    Language:
+    <strong>Language:</strong>
     {{ user.teacher_profile.language }}
 </p>
 
 <p>
-    Currency:
+    <strong>Currency:</strong>
     {{ user.teacher_profile.currency }}
 </p>
 
 <p>
-    Default lesson duration:
-    {{ user.teacher_profile.default_lesson_duration }} minutes
+    <strong>Default lesson duration:</strong>
+    {{ user.teacher_profile.default_lesson_duration }}
+    minutes
 </p>
 
 <p>
-    Default lesson price:
+    <strong>Default lesson price:</strong>
     {{ user.teacher_profile.default_lesson_price }}
     {{ user.teacher_profile.currency }}
 </p>
@@ -53,14 +75,23 @@
     <h2>Workspace</h2>
 
     <p>
+        <strong>Name:</strong>
         {{ workspace.name }}
     </p>
 
 {% endif %}
 
 
-<a href="{% url 'accounts:password_change' %}">
-    Change password
-</a>
+<p>
+    <a href="{% url 'accounts:profile_edit' %}">
+        Edit settings
+    </a>
+</p>
+
+<p>
+    <a href="{% url 'accounts:password_change' %}">
+        Change password
+    </a>
+</p>
 
 {% endblock %}

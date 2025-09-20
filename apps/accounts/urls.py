@@ -1,14 +1,7 @@
 from django.contrib.auth import views as auth_views
-from django.urls  import path, reverse_lazy
-
-from .views import profile_view, register_view
-
-app_name = 'accounts'
-
-from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
-from .views import profile_view, register_view
+from .views import profile_view, register_view, profile_edit_view
 
 
 app_name = "accounts"
@@ -28,6 +21,7 @@ urlpatterns = [
     path("logout/",auth_views.LogoutView.as_view(),name="logout"),
 
     path("profile/",profile_view,name="profile"),
+    path('profile/edit/', profile_edit_view, name="profile_edit"),
 
     path(
         "password/change/",

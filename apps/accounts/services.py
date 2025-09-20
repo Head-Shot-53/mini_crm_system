@@ -13,3 +13,11 @@ def register_teacher(*, email, password, first_name='', last_name='', workspace_
     create_personal_workspace(owner=user, name=workspace_name)
 
     return user
+
+@transaction.atomic
+def update_teacher_settings(*, user_form, profile_form, workspace_form):
+    user = user_form.save()
+    profile = profile_form.save()
+    workspace = workspace_form.save()
+
+    return user, profile, workspace
