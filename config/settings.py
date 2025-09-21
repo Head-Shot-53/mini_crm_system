@@ -45,6 +45,7 @@ INSTALLED_APPS = [
 
     "apps.accounts.apps.AccountsConfig",
     "apps.workspaces.apps.WorkspacesConfig",
+    "apps.academics.apps.AcademicsConfig",
 ]
 
 MIDDLEWARE = [
