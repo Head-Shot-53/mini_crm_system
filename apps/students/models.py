@@ -17,6 +17,15 @@ class Student(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="students")
+    
+    subjects = models.ManyToManyField(
+        "academics.Subject",
+        through="academics.StudentSubject",
+        through_fields=("student", "subject"),
+        related_name="students",
+        blank=True
+    )
+
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     email = models.EmailField(blank=True)
