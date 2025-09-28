@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    {{ student.full_name }} | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+
+<h1>{{ student.full_name }}</h1>
+
+
+<p>
+    <a href="{% url 'students:student_edit' student.id %}">
+        Edit Student
+    </a>
+</p>
+
+
+<hr>
+
+
+<h2>General Information</h2>
+
+
+<p>
+    <strong>Email:</strong>
+    {{ student.email|default:"—" }}
+</p>
+
+
+<p>
+    <strong>Phone:</strong>
+    {{ student.phone|default:"—" }}
+</p>
+
+
+<p>
+    <strong>Status:</strong>
+    {{ student.get_status_display }}
+</p>
+
+
+<p>
+    <strong>Start Date:</strong>
+    {{ student.start_date }}
+</p>
+
+
+<p>
+    <strong>Default Lesson Price:</strong>
+
+    {% if student.default_lesson_price is not None %}
+        {{ student.default_lesson_price }}
+    {% else %}
+        Teacher default
+    {% endif %}
+
+</p>
+
+
+<hr>
+
+
+<h2>Subjects</h2>
+
+
+{% if enrollments %}
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Level</th>
+                <th>Status</th>
+                <th>Started</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for enrollment in enrollments %}
+
+                <tr>
+
+                    <td>
+                        {{ enrollment.subject.name }}
+                    </td>
+
+                    <td>
+                        {{ enrollment.level|default:"—" }}
+                    </td>
+
+                    <td>
+                        {{ enrollment.get_status_display }}
+                    </td>
+
+                    <td>
+                        {{ enrollment.started_on }}
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+{% else %}
+
+    <p>
+        No subjects assigned yet.
+    </p>
+
+{% endif %}
+
+
+<hr>
+
+
+<h2>Assign Subject</h2>
+
+
+{% if student.status == "archived" %}
+
+    <p>
+        Archived students cannot receive new subjects.
+    </p>
+
+{% elif has_available_subjects or assignment_form.errors %}
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        {{ assignment_form.as_p }}
+
+        <button type="submit">
+            Assign Subject
+        </button>
+
+    </form>
+
+{% else %}
+
+    <p>
+        No additional active subjects are available.
+    </p>
+
+    <a href="{% url 'academics:subject_create' %}">
+        Create Subject
+    </a>
+
+{% endif %}
+
+
+<hr>
+
+
+<a href="{% url 'students:student_list' %}">
+    Back to Students
+</a>
+
+
+{% endblock %}

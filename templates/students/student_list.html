@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Students | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Students</h1>
+
+
+<p>
+    <a href="{% url 'students:student_create' %}">
+        Add Student
+    </a>
+</p>
+
+
+{% if students %}
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for student in students %}
+
+                <tr>
+
+                    <td>
+                        <a href="{% url 'students:student_detail' student.id %}">
+                            {{ student.full_name }}
+                        </a>
+                    </td>
+
+                    <td>
+                        {{ student.email|default:"—" }}
+                    </td>
+
+                    <td>
+                        {{ student.phone|default:"—" }}
+                    </td>
+
+                    <td>
+                        {{ student.get_status_display }}
+                    </td>
+
+                    <td>
+                        <a href="{% url 'students:student_edit' student.id %}">
+                            Edit
+                        </a>
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+{% else %}
+
+    <p>
+        You don't have any students yet.
+    </p>
+
+{% endif %}
+
+
+{% endblock %}

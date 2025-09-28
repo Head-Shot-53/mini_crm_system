@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    {{ page_title }} | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>{{ page_title }}</h1>
+
+
+<form method="post">
+
+    {% csrf_token %}
+
+    {{ form.as_p }}
+
+    <button type="submit">
+        Save
+    </button>
+
+</form>
+
+
+<p>
+    <a href="{% url 'students:student_list' %}">
+        Back to Students
+    </a>
+</p>
+
+
+{% endblock %}
