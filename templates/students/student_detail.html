@@ -13,9 +13,13 @@
 
 
 <p>
-    <a href="{% url 'students:student_edit' student.id %}">
-        Edit Student
-    </a>
+    {% if student.status != "archived" %}
+
+        <a href="{% url 'students:student_edit' student.id %}">
+            Edit Student
+        </a>
+
+    {% endif %}
 </p>
 
 
@@ -42,6 +46,105 @@
     {{ student.get_status_display }}
 </p>
 
+<h3>Student Management</h3>
+
+{% if student.status == "active" %}
+
+    <form
+        method="post"
+        action="{% url 'students:student_status' student.id 'pause' %}"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Pause Learning
+        </button>
+    </form>
+
+    <form
+        method="post"
+        action="{% url 'students:student_status' student.id 'complete' %}"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Complete Learning
+        </button>
+    </form>
+
+{% elif student.status == "paused" %}
+
+    <form
+        method="post"
+        action="{% url 'students:student_status' student.id 'resume' %}"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Resume Learning
+        </button>
+    </form>
+
+    <form
+        method="post"
+        action="{% url 'students:student_status' student.id 'complete' %}"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Complete Learning
+        </button>
+    </form>
+
+{% elif student.status == "completed" %}
+
+    <form
+        method="post"
+        action="{% url 'students:student_status' student.id 'reopen' %}"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Reopen Learning
+        </button>
+    </form>
+
+{% endif %}
+
+
+{% if student.status != "archived" %}
+
+    <form
+        method="post"
+        action="{% url 'students:student_status' student.id 'archive' %}"
+        onsubmit="return confirm('Archive this student?');"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Archive Student
+        </button>
+    </form>
+
+{% else %}
+
+    <p>
+        Archived at:
+        {{ student.archived_at|date:"Y-m-d H:i"|default:"—" }}
+    </p>
+
+    <form
+        method="post"
+        action="{% url 'students:student_status' student.id 'restore' %}"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Restore Student
+        </button>
+    </form>
+
+{% endif %}
 
 <p>
     <strong>Start Date:</strong>

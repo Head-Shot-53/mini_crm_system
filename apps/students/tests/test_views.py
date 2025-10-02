@@ -231,3 +231,89 @@ def test_cannot_assign_foreign_subject(client,teacher,student):
         student=student,
         subject=foreign_subject,
     ).exists()
+
+
+def test_archived_student_cannot_be_edited(client, teacher, workspace, student):
+    student.status = Student.Status.ARCHIVED
+
+    student.save(update_fields=["status"])
+
+    client.force_login(teacher)
+
+    response = client.post(
+        reverse(
+            "students:student_edit",
+            kwargs={
+                "student_id": student.id
+            }
+        ),
+        {
+            "first_name": "Changed",
+            "last_name": "Name"
+        },
+    )
+
+    assert response.status_code == 302
+
+    student.refresh_from_db()
+
+    assert student.first_name == "Anna"
+    assert student.last_name == "Kowalska"
+
+
+def test_status_change_requires_post(client, teacher, student):
+    client.force_login(teacher)
+
+    response = client.get(
+        reverse(
+            "students:student_status",
+            kwargs={
+                "student_id": student.id,
+                "action": "archive"
+            }
+        )
+    )
+
+    assert response.status_code == 405
+
+    student.refresh_from_db()
+
+    assert student.status == Student.Status.ACTIVE
+
+
+def test_cannot_change_foreign_student_status(client, teacher):
+    User = get_user_model()
+
+    another_teacher = User.objects.create_user(
+        email="another@example.com",
+        password="TestPassword123!"
+    )
+
+    another_workspace = Workspace.objects.create(
+        owner=another_teacher,
+        name="Foreign Workspace"
+    )
+
+    foreign_student = Student.objects.create(
+        workspace=another_workspace,
+        first_name="Maria",
+        last_name="Nowak"
+    )
+
+    client.force_login(teacher)
+
+    response = client.post(
+        reverse(
+            "students:student_status",
+            kwargs={
+                "student_id": foreign_student.id,
+                "action": "archive",
+            }
+        )
+    )
+
+    assert response.status_code == 404
+
+    foreign_student.refresh_from_db()
+
+    assert foreign_student.status == Student.Status.ACTIVE

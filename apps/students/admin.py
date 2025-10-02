@@ -10,6 +10,9 @@ class StudentAdmin(admin.ModelAdmin):
 
     search_fields = ("first_name", "last_name", "email", "phone")
 
-    readonly_fields = ("id", "created_at", "updated_at")
+    readonly_fields = ("id", "status", "archived_at", "status_before_archive", "created_at", "updated_at")
 
     ordering = ("last_name", "first_name")
+
+    def has_delete_permission(self, request, obj=None):
+        return False

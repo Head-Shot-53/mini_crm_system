@@ -8,13 +8,37 @@
 
 {% block content %}
 
-<h1>Students</h1>
+{% if show_archived %}
 
+    <h1>Archived Students</h1>
+
+{% else %}
+
+    <h1>Current Students</h1>
+
+{% endif %}
+
+
+<nav>
+
+    <a href="{% url 'students:student_list' %}">
+        Current Students
+    </a>
+
+    <a href="{% url 'students:student_list' %}?view=archived">
+        Archived Students
+    </a>
+
+</nav>
 
 <p>
-    <a href="{% url 'students:student_create' %}">
-        Add Student
-    </a>
+    {% if not show_archived %}
+
+        <a href="{% url 'students:student_create' %}">
+            Add Student
+        </a>
+
+    {% endif %}
 </p>
 
 
@@ -57,9 +81,17 @@
                     </td>
 
                     <td>
-                        <a href="{% url 'students:student_edit' student.id %}">
-                            Edit
+                        <a href="{% url 'students:student_detail' student.id %}">
+                            View
                         </a>
+
+                        {% if student.status != "archived" %}
+
+                            <a href="{% url 'students:student_edit' student.id %}">
+                                Edit
+                            </a>
+
+                        {% endif %}
                     </td>
 
                 </tr>

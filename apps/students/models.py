@@ -30,7 +30,11 @@ class Student(models.Model):
     last_name = models.CharField(max_length=150)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=30, blank=True)
+
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    status_before_archive = models.CharField(max_length=20, blank=True, default="")
+
     start_date = models.DateField(default=timezone.localdate)
     level = models.CharField(max_length=100, blank=True)
     default_lesson_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0),])
