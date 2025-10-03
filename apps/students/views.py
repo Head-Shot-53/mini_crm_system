@@ -6,6 +6,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.http import HttpResponseForbidden
+from django.core.paginator import Paginator
 
 from .services.lifecycle import STATUS_TRANSITIONS, change_student_status
 
@@ -13,7 +14,8 @@ from apps.academics.models import Subject
 from apps.academics.services import assign_subject_to_student
 from apps.workspaces.selectors import get_user_workspace
 
-from .forms import StudentForm, SubjectAssignmentForm
+from .forms import StudentForm, SubjectAssignmentForm, StudentFilterForm
+from .selectors import get_filtered_students
 
 from .models import Student
 
@@ -32,20 +34,48 @@ def student_list_view(request):
 
     show_archived = (request.GET.get("view") == "archived")
 
-    students = Student.objects.filter(workspace=workspace)
+    filter_form = StudentFilterForm(
+        request.GET,
+        workspace=workspace,
+        archived=show_archived
+    )
 
-    if show_archived:
-        students = students.filter(status=Student.Status.ARCHIVED)
+    if filter_form.is_valid():
+        filters = filter_form.cleaned_data
+
+        students = get_filtered_students(
+            workspace=workspace,
+            archived=show_archived,
+            q=filters.get("q", ""),
+            status=filters.get("status"),
+            subject=filters.get("subject")
+        )
 
     else:
-        students = students.exclude(status=Student.Status.ARCHIVED)
+        students = Student.objects.none()
 
-    students = students.order_by("last_name", "first_name", "id")
+    paginator = Paginator(students, per_page=10)
+
+    page_number = request.GET.get("page")
+
+    page_obj = paginator.get_page(page_number)
+
+    query_params = request.GET.copy()
+
+    query_params.pop("page", None)
+
+    if show_archived:
+        query_params.pop("status", None)
+
+    page_query = query_params.urlencode()
 
     return render(request, "students/student_list.html",
         {
-            "students": students,
+            "students": page_obj,
+            "page_obj": page_obj,
+            "filter_form": filter_form,
             "show_archived": show_archived,
+            "page_query": page_query,
         }
     )
 

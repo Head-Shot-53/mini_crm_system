@@ -31,14 +31,111 @@
 
 </nav>
 
-<p>
+
+<hr>
+
+
+<h2>Search and Filters</h2>
+
+
+<form
+    method="get"
+    action="{% url 'students:student_list' %}"
+>
+
+    {% if show_archived %}
+
+        <input
+            type="hidden"
+            name="view"
+            value="archived"
+        >
+
+    {% endif %}
+
+
+    {{ filter_form.non_field_errors }}
+
+
+    <div>
+
+        {{ filter_form.q.label_tag }}
+
+        {{ filter_form.q }}
+
+        {{ filter_form.q.errors }}
+
+    </div>
+
+
     {% if not show_archived %}
+
+        <div>
+
+            {{ filter_form.status.label_tag }}
+
+            {{ filter_form.status }}
+
+            {{ filter_form.status.errors }}
+
+        </div>
+
+    {% endif %}
+
+
+    <div>
+
+        {{ filter_form.subject.label_tag }}
+
+        {{ filter_form.subject }}
+
+        {{ filter_form.subject.errors }}
+
+    </div>
+
+
+    <button type="submit">
+        Apply Filters
+    </button>
+
+
+    {% if show_archived %}
+
+        <a href="{% url 'students:student_list' %}?view=archived">
+            Reset
+        </a>
+
+    {% else %}
+
+        <a href="{% url 'students:student_list' %}">
+            Reset
+        </a>
+
+    {% endif %}
+
+</form>
+
+
+<hr>
+
+
+{% if not show_archived %}
+
+    <p>
 
         <a href="{% url 'students:student_create' %}">
             Add Student
         </a>
 
-    {% endif %}
+    </p>
+
+{% endif %}
+
+
+<p>
+    Found:
+    {{ page_obj.paginator.count }}
+    students
 </p>
 
 
@@ -47,6 +144,7 @@
     <table>
 
         <thead>
+
             <tr>
                 <th>Name</th>
                 <th>Email</th>
@@ -54,7 +152,9 @@
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
+
         </thead>
+
 
         <tbody>
 
@@ -63,27 +163,35 @@
                 <tr>
 
                     <td>
+
                         <a href="{% url 'students:student_detail' student.id %}">
                             {{ student.full_name }}
                         </a>
+
                     </td>
+
 
                     <td>
                         {{ student.email|default:"—" }}
                     </td>
 
+
                     <td>
                         {{ student.phone|default:"—" }}
                     </td>
+
 
                     <td>
                         {{ student.get_status_display }}
                     </td>
 
+
                     <td>
+
                         <a href="{% url 'students:student_detail' student.id %}">
                             View
                         </a>
+
 
                         {% if student.status != "archived" %}
 
@@ -92,6 +200,7 @@
                             </a>
 
                         {% endif %}
+
                     </td>
 
                 </tr>
@@ -102,11 +211,60 @@
 
     </table>
 
+
 {% else %}
 
     <p>
-        You don't have any students yet.
+        No students found.
     </p>
+
+{% endif %}
+
+
+{% if page_obj.has_other_pages %}
+
+    <hr>
+
+    <nav aria-label="Student pagination">
+
+
+        {% if page_obj.has_previous %}
+
+            <a href="?{{ page_query }}{% if page_query %}&amp;{% endif %}page=1">
+                First
+            </a>
+
+
+            <a href="?{{ page_query }}{% if page_query %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">
+                Previous
+            </a>
+
+        {% endif %}
+
+
+        <span>
+
+            Page {{ page_obj.number }}
+            of {{ page_obj.paginator.num_pages }}
+
+        </span>
+
+
+        {% if page_obj.has_next %}
+
+            <a href="?{{ page_query }}{% if page_query %}&amp;{% endif %}page={{ page_obj.next_page_number }}">
+                Next
+            </a>
+
+
+            <a href="?{{ page_query }}{% if page_query %}&amp;{% endif %}page={{ page_obj.paginator.num_pages }}">
+                Last
+            </a>
+
+        {% endif %}
+
+
+    </nav>
 
 {% endif %}
 

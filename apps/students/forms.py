@@ -92,3 +92,49 @@ class SubjectAssignmentForm(forms.Form):
                 id__in=assigned_subject_ids,
             ).order_by("name")
         )
+
+
+class StudentFilterForm(forms.Form):
+
+    q = forms.CharField(required=False,max_length=100,label="Search",
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Name, email or phone"
+            }
+        )
+    )
+
+    status = forms.ChoiceField(
+        required=False,
+        choices=[
+            ("", "All statuses"),
+            *[
+                choice
+                for choice in Student.Status.choices
+                if choice[0] != Student.Status.ARCHIVED
+            ]
+        ]
+    )
+
+    subject = forms.ModelChoiceField(
+        queryset=Subject.objects.none(),
+        required=False,
+        empty_label="All subjects"
+    )
+
+    def __init__(self, *args, workspace, archived=False, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["subject"].queryset = (
+            Subject.objects
+            .filter(workspace=workspace)
+            .order_by("name")
+        )
+
+        if archived:
+            self.fields.pop("status")
+
+    def clean_q(self):
+        value = self.cleaned_data["q"]
+
+        return " ".join(value.split())
