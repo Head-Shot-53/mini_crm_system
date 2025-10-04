@@ -12,6 +12,60 @@
 <h1>{{ student.full_name }}</h1>
 
 
+<section>
+
+    <h2>General Information</h2>
+
+    <p>
+        <strong>Full name:</strong>
+        {{ student.full_name }}
+    </p>
+
+    <p>
+        <strong>Email:</strong>
+        {{ student.email|default:"—" }}
+    </p>
+
+    <p>
+        <strong>Phone:</strong>
+        {{ student.phone|default:"—" }}
+    </p>
+
+    <p>
+        <strong>Status:</strong>
+        {{ student.get_status_display }}
+    </p>
+
+    <p>
+        <strong>Started learning:</strong>
+        {{ student.start_date|date:"d.m.Y" }}
+    </p>
+
+    <p>
+        <strong>Individual lesson price:</strong>
+
+        {% if student.default_lesson_price is not None %}
+
+            {{ student.default_lesson_price }}
+
+            {{ request.user.teacher_profile.currency }}
+
+        {% else %}
+
+            Teacher default
+
+        {% endif %}
+
+    </p>
+
+    <p>
+        <strong>Added to CRM:</strong>
+        {{ student.created_at|date:"d.m.Y H:i" }}
+    </p>
+
+</section>
+
+
 <p>
     {% if student.status != "archived" %}
 
@@ -112,6 +166,37 @@
 {% endif %}
 
 
+<section>
+
+    <h2>Learning Overview</h2>
+
+    <div>
+
+        <p>
+            <strong>Total subjects:</strong>
+            {{ enrollment_stats.total }}
+        </p>
+
+        <p>
+            <strong>Active:</strong>
+            {{ enrollment_stats.active }}
+        </p>
+
+        <p>
+            <strong>Paused:</strong>
+            {{ enrollment_stats.paused }}
+        </p>
+
+        <p>
+            <strong>Completed:</strong>
+            {{ enrollment_stats.completed }}
+        </p>
+
+    </div>
+
+</section>
+
+
 {% if student.status != "archived" %}
 
     <form
@@ -167,59 +252,100 @@
 <hr>
 
 
-<h2>Subjects</h2>
+<section>
 
+    <h2>Subject Enrollments</h2>
 
-{% if enrollments %}
+    {% if enrollments %}
 
-    <table>
+        <table>
 
-        <thead>
-            <tr>
-                <th>Subject</th>
-                <th>Level</th>
-                <th>Status</th>
-                <th>Started</th>
-            </tr>
-        </thead>
-
-        <tbody>
-
-            {% for enrollment in enrollments %}
+            <thead>
 
                 <tr>
-
-                    <td>
-                        {{ enrollment.subject.name }}
-                    </td>
-
-                    <td>
-                        {{ enrollment.level|default:"—" }}
-                    </td>
-
-                    <td>
-                        {{ enrollment.get_status_display }}
-                    </td>
-
-                    <td>
-                        {{ enrollment.started_on }}
-                    </td>
-
+                    <th>Subject</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                    <th>Actions</th>
                 </tr>
 
-            {% endfor %}
+            </thead>
 
-        </tbody>
 
-    </table>
+            <tbody>
 
-{% else %}
+                {% for enrollment in enrollments %}
 
-    <p>
-        No subjects assigned yet.
-    </p>
+                    <tr>
 
-{% endif %}
+                        <td>
+                            {{ enrollment.subject.name }}
+                        </td>
+
+                        <td>
+                            {{ enrollment.level|default:"—" }}
+                        </td>
+
+                        <td>
+                            {{ enrollment.get_status_display }}
+                        </td>
+
+                        <td>
+                            {{ enrollment.started_on|date:"d.m.Y" }}
+                        </td>
+
+                        <td>
+
+                            {% if student.status != "archived" %}
+
+                                <a
+                                    href="{% url 'students:enrollment_edit' student.id enrollment.id %}"
+                                >
+                                    Edit
+                                </a>
+
+                            {% else %}
+
+                                Archived
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% if enrollment.notes %}
+
+                        <tr>
+
+                            <td colspan="5">
+
+                                <strong>Notes:</strong>
+
+                                {{ enrollment.notes|linebreaksbr }}
+
+                            </td>
+
+                        </tr>
+
+                    {% endif %}
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    {% else %}
+
+        <p>
+            No subjects assigned yet.
+        </p>
+
+    {% endif %}
+
+</section>
 
 
 <hr>
@@ -262,6 +388,57 @@
 
 
 <hr>
+
+
+<hr>
+
+
+<section>
+
+    <h2>Upcoming Lessons</h2>
+
+    <p>
+        Lesson scheduling will be available
+        after the Lessons module is implemented.
+    </p>
+
+</section>
+
+
+<section>
+
+    <h2>Homework</h2>
+
+    <p>
+        Homework management will be available
+        after the Learning module is implemented.
+    </p>
+
+</section>
+
+
+<section>
+
+    <h2>Learning Progress</h2>
+
+    <p>
+        Progress tracking will be available
+        after the Learning module is implemented.
+    </p>
+
+</section>
+
+
+<section>
+
+    <h2>Payments</h2>
+
+    <p>
+        Payment history and balance will be available
+        after the Finance module is implemented.
+    </p>
+
+</section>
 
 
 <a href="{% url 'students:student_list' %}">

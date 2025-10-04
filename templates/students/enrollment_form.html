@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Edit Enrollment | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Edit Subject Enrollment</h1>
+
+
+<h2>{{ student.full_name }}</h2>
+
+
+<p>
+    <strong>Subject:</strong>
+    {{ enrollment.subject.name }}
+</p>
+
+
+<p>
+    <strong>Current status:</strong>
+    {{ enrollment.get_status_display }}
+</p>
+
+
+<hr>
+
+
+<form method="post">
+
+    {% csrf_token %}
+
+    {{ form.as_p }}
+
+    <button type="submit">
+        Save Changes
+    </button>
+
+</form>
+
+
+<hr>
+
+
+<p>
+    <a href="{% url 'students:student_detail' student.id %}">
+        Back to Student
+    </a>
+</p>
+
+
+{% endblock %}

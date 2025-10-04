@@ -5,6 +5,7 @@ from .models import Student
 from django.utils import timezone
 
 from apps.academics.models import Subject, StudentSubject
+from apps.academics.services import ENROLLMENT_STATUS_TRANSITIONS
 
 
 class StudentForm(forms.ModelForm):
@@ -138,3 +139,52 @@ class StudentFilterForm(forms.Form):
         value = self.cleaned_data["q"]
 
         return " ".join(value.split())
+
+
+class EnrollmentUpdateForm(forms.ModelForm):
+
+    class Meta:
+        model = StudentSubject
+
+        fields = ("started_on", "level", "status", "notes")
+
+        widgets = {
+            "started_on": forms.DateInput(
+                attrs={
+                    "type": "date"
+                },
+                format="%Y-%m-%d"
+            ),
+
+            "notes": forms.Textarea(
+                attrs={
+                    "rows": 5
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        current_status = self.instance.status
+
+        allowed_statuses = (
+            ENROLLMENT_STATUS_TRANSITIONS.get(
+                current_status,
+                set(),
+            )
+        )
+
+        available_statuses = allowed_statuses | {current_status}
+
+        self.fields["status"].choices = [
+            (value, label)
+            for value, label in StudentSubject.Status.choices
+            if value in available_statuses
+        ]
+
+    def clean_level(self):
+        return self.cleaned_data["level"].strip()
+
+    def clean_notes(self):
+        return self.cleaned_data["notes"].strip()

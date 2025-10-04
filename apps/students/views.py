@@ -7,17 +7,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.http import HttpResponseForbidden
 from django.core.paginator import Paginator
+from django.db.models import Count, Q
 
 from .services.lifecycle import STATUS_TRANSITIONS, change_student_status
 
 from apps.academics.models import Subject
-from apps.academics.services import assign_subject_to_student
+from apps.academics.services import assign_subject_to_student, update_student_enrollment
 from apps.workspaces.selectors import get_user_workspace
 
-from .forms import StudentForm, SubjectAssignmentForm, StudentFilterForm
+from .forms import StudentForm, SubjectAssignmentForm, StudentFilterForm, EnrollmentUpdateForm
 from .selectors import get_filtered_students
 
 from .models import Student
+from apps.academics.models import StudentSubject
 
 
 def get_current_workspace(user):
@@ -175,6 +177,37 @@ def student_detail_view(request,student_id):
 
     enrollments = (student.subject_enrollments.filter(subject__workspace=workspace,).select_related("subject",).order_by("subject__name"))
 
+    enrollment_stats = (
+        student.subject_enrollments
+        .filter(
+            subject__workspace=workspace,
+        )
+        .aggregate(
+            total=Count("id"),
+
+            active=Count(
+                "id",
+                filter=Q(
+                    status=StudentSubject.Status.ACTIVE
+                ),
+            ),
+
+            paused=Count(
+                "id",
+                filter=Q(
+                    status=StudentSubject.Status.PAUSED
+                ),
+            ),
+
+            completed=Count(
+                "id",
+                filter=Q(
+                    status=StudentSubject.Status.COMPLETED
+                ),
+            ),
+        )
+    )
+
     has_available_subjects = (assignment_form.fields["subject"].queryset.exists())
 
     return render(request,"students/student_detail.html",
@@ -183,6 +216,7 @@ def student_detail_view(request,student_id):
             "enrollments": enrollments,
             "assignment_form": assignment_form,
             "has_available_subjects": has_available_subjects,
+            "enrollment_stats": enrollment_stats,
         }
     )
 
@@ -221,3 +255,81 @@ def student_status_view(request, student_id, action):
     messages.success(request,"Student status updated successfully.")
 
     return redirect("students:student_detail",student_id=student.id)
+
+
+@login_required
+def enrollment_edit_view(request, student_id, enrollment_id):
+    workspace = get_current_workspace(
+        request.user
+    )
+
+    student = get_object_or_404(
+        Student,
+        id=student_id,
+        workspace=workspace
+    )
+
+    if student.status == Student.Status.ARCHIVED:
+        return HttpResponseForbidden(
+            "Archived students cannot have their enrollments edited."
+        )
+
+    enrollment = get_object_or_404(
+        StudentSubject.objects.select_related(
+            "subject"
+        ),
+        id=enrollment_id,
+        student=student,
+        subject__workspace=workspace
+    )
+
+    form = EnrollmentUpdateForm(
+        request.POST or None,
+        instance=enrollment
+    )
+
+    if request.method == "POST" and form.is_valid():
+        try:
+            update_student_enrollment(
+                workspace=workspace,
+                student_id=student.id,
+                enrollment_id=enrollment.id,
+                level=form.cleaned_data["level"],
+                status=form.cleaned_data["status"],
+                started_on=form.cleaned_data["started_on"],
+                notes=form.cleaned_data["notes"],
+            )
+
+        except ValidationError:
+            form.add_error(
+                None,
+                "Cannot update this enrollment. "
+                "Check its current status and submitted values.",
+            )
+
+        except (
+            Student.DoesNotExist,
+            StudentSubject.DoesNotExist,
+        ):
+            raise Http404(
+                "Student enrollment not found."
+            )
+
+        else:
+            messages.success(
+                request,
+                "Student enrollment updated successfully.",
+            )
+
+            return redirect(
+                "students:student_detail",
+                student_id=student.id,
+            )
+
+    return render(request, "students/enrollment_form.html",
+        {
+            "student": student,
+            "enrollment": enrollment,
+            "form": form,
+        }
+    )
