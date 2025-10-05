@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 
 from apps.workspaces.forms import WorkspaceSettingsForm
+from apps.workspaces.selectors import get_user_workspace
 
 from .forms import TeacherRegistrationForm, TeacherProfileForm, UserProfileForm
 from .services import register_teacher, update_teacher_settings
@@ -36,13 +37,13 @@ def register_view(request):
 
 @login_required
 def profile_view(request):
-    workspace = (request.user.owned_workspaces.first())
+    workspace = get_user_workspace(request.user)
 
     return render(request, "accounts/profile.html", {'workspace' : workspace})
 
 @login_required
 def profile_edit_view(request):
-    workspace = request.user.owned_workspaces.first()
+    workspace = get_user_workspace(request.user)
 
     if workspace is None:
         messages.error(request, "Your account does not have a workspace.")

@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 
 from .services.lifecycle import STATUS_TRANSITIONS, change_student_status
+from .services.student import update_student_details
 
 from apps.academics.models import Subject
 from apps.academics.services import assign_subject_to_student, update_student_enrollment
@@ -105,9 +106,15 @@ def student_create_view(request):
 
 @login_required
 def student_edit_view(request, student_id):
-    workspace = get_current_workspace(request.user)
+    workspace = get_current_workspace(
+        request.user
+    )
 
-    student = get_object_or_404(Student, id=student_id, workspace=workspace)
+    student = get_object_or_404(
+        Student,
+        id=student_id,
+        workspace=workspace
+    )
 
     if student.status == Student.Status.ARCHIVED:
         messages.error(
@@ -120,15 +127,47 @@ def student_edit_view(request, student_id):
             student_id=student.id
         )
 
-    form = StudentForm(request.POST or None, instance=student)
+    form = StudentForm(
+        request.POST or None,
+        instance=student
+    )
 
     if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request,"Student updated successfully.")
+        try:
+            updated_student = update_student_details(
+                workspace=workspace,
+                student_id=student.id,
+                data=form.cleaned_data
+            )
 
-        return redirect("students:student_detail",student_id=student.id)
+        except ValidationError as error:
+            form.add_error(
+                None,
+                error
+            )
 
-    return render(request,"students/student_form.html",{"form": form, "page_title": "Edit Student"})
+        except Student.DoesNotExist:
+            raise Http404(
+                "Student not found."
+            )
+
+        else:
+            messages.success(
+                request,
+                "Student updated successfully."
+            )
+
+            return redirect(
+                "students:student_detail",
+                student_id=updated_student.id
+            )
+
+    return render(request, "students/student_form.html",
+        {
+            "form": form,
+            "page_title": "Edit Student",
+        }
+    )
 
 @login_required
 def student_detail_view(request,student_id):
