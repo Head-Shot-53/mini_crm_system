@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.students.models import Student
 
-from .models import StudentSubject, Subject
+from .models import StudentSubject, Subject, Group
 
 
 @transaction.atomic
@@ -103,3 +103,26 @@ def update_student_enrollment(*, workspace, student_id, enrollment_id, level, st
     )
 
     return enrollment
+
+
+@transaction.atomic
+def create_group(*, workspace, subject_id, name, description="", max_students=None):
+    subject = Subject.objects.get(
+        id=subject_id,
+        workspace=workspace,
+        is_active=True
+    )
+
+    group = Group(
+        workspace=workspace,
+        subject=subject,
+        name=name.strip(),
+        description=description.strip(),
+        max_students=max_students
+    )
+
+    group.full_clean()
+
+    group.save()
+
+    return group

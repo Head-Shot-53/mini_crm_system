@@ -1,9 +1,11 @@
 import uuid
 
 from django.db import models
-from django.db.models.functions import Lower
+from django.db.models.functions import Lower, Trim
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.core.validators import MinValueValidator
+from django.db.models import Q
 
 from apps.workspaces.models import Workspace
 
@@ -82,3 +84,83 @@ class StudentSubject(models.Model):
 
     def __str__(self):
         return f"{self.student.full_name} - {self.subject.name}"
+
+
+class Group(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="teaching_groups")
+
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="teaching_groups")
+
+    name = models.CharField(max_length=150)
+
+    description = models.TextField(blank=True)
+
+    max_students = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
+
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("name", "id",)
+
+        constraints = [
+            models.UniqueConstraint(
+                Lower(Trim("name")),
+                "workspace",
+                name="unique_group_name_per_ws_ci"
+            ),
+
+            models.CheckConstraint(
+                condition=(
+                    Q(max_students__isnull=True)
+                    | Q(max_students__gte=1)
+                ),
+                name="group_max_students_positive"
+            )
+        ]
+
+        indexes = [
+            models.Index(
+                fields=(
+                    "workspace",
+                    "is_active"
+                ),
+                name="group_ws_active_idx"
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+
+        self.name = self.name.strip()
+
+        if not self.name:
+            raise ValidationError({
+                "name": "Group name cannot be empty."
+            })
+
+        if self.workspace_id and self.subject_id:
+
+            if self.subject.workspace_id != self.workspace_id:
+                raise ValidationError({
+                    "subject": (
+                        "Group and subject must belong "
+                        "to the same workspace."
+                    )
+                })
+
+            if self._state.adding and not self.subject.is_active:
+                raise ValidationError({
+                    "subject": (
+                        "Cannot create a group "
+                        "with an inactive subject."
+                    )
+                })
+
+    def __str__(self):
+        return self.name
