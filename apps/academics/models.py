@@ -5,7 +5,7 @@ from django.db.models.functions import Lower, Trim
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.core.validators import MinValueValidator
-from django.db.models import Q
+from django.db.models import Q, F
 
 from apps.workspaces.models import Workspace
 
@@ -93,6 +93,13 @@ class Group(models.Model):
 
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="teaching_groups")
 
+    students = models.ManyToManyField("students.Student",
+        through="academics.GroupMembership",
+        through_fields=("group", "student"),
+        related_name="study_groups",
+        blank=True
+    )
+
     name = models.CharField(max_length=150)
 
     description = models.TextField(blank=True)
@@ -164,3 +171,82 @@ class Group(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class GroupMembership(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    group = models.ForeignKey(Group, on_delete=models.PROTECT, related_name="memberships")
+
+    student = models.ForeignKey("students.Student", on_delete=models.PROTECT, related_name="group_memberships")
+
+    joined_at = models.DateTimeField(default=timezone.now)
+
+    left_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-joined_at", "id")
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=(
+                    "group",
+                    "student"
+                ),
+                condition=Q(
+                    left_at__isnull=True,
+                ),
+                name="unique_active_group_member"
+            ),
+
+            models.CheckConstraint(
+                condition=(
+                    Q(left_at__isnull=True)
+                    | Q(left_at__gte=F("joined_at"))
+                ),
+                name="group_member_valid_dates"
+            )
+        ]
+
+        indexes = [
+            models.Index(
+                fields=(
+                    "group",
+                    "left_at"
+                ),
+                name="gm_group_left_idx"
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+
+        if self.group_id and self.student_id:
+            if (
+                self.group.workspace_id
+                != self.student.workspace_id
+            ):
+                raise ValidationError(
+                    "Group and student must belong "
+                    "to the same workspace."
+                )
+
+        if self.left_at and self.joined_at:
+            if self.left_at < self.joined_at:
+                raise ValidationError(
+                    {
+                        "left_at": (
+                            "Leaving date cannot be earlier "
+                            "than joining date."
+                        )
+                    }
+                )
+
+    @property
+    def is_active(self):
+        return self.left_at is None
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.group.name}"

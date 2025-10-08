@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Subject, Group
+from .models import Subject, Group, GroupMembership
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
@@ -17,3 +17,22 @@ class GroupAdmin(admin.ModelAdmin):
     search_fields = ("name", "subject__name", "workspace__name")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("name",)
+
+@admin.register(GroupMembership)
+class GroupMembershipAdmin(admin.ModelAdmin):
+    list_display = ("student", "group", "joined_at", "left_at")
+    list_filter = ( "group",)
+    search_fields = ("student__first_name", "student__last_name", "group__name")
+    readonly_fields = ("id", "student", "group", "joined_at", "left_at", "created_at")
+
+
+    def has_add_permission(self, request):
+        return False
+
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+    def has_delete_permission(self, request, obj=None):
+        return False

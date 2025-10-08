@@ -3,6 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.students.models import Student
+from apps.academics.models import Group, GroupMembership
 
 STATUS_TRANSITIONS = {
     "pause": {
@@ -71,8 +72,41 @@ def change_student_status(*,workspace,student_id,action):
             )
 
         if action == "archive":
+            active_group_ids = list(
+                GroupMembership.objects
+                .filter(
+                    student=student,
+                    group__workspace=workspace,
+                    left_at__isnull=True
+                )
+                .order_by("group_id")
+                .values_list("group_id", flat=True)
+            )
+
+            list(
+                Group.objects
+                .select_for_update()
+                .filter(
+                    id__in=active_group_ids,
+                    workspace=workspace
+                )
+                .order_by("id")
+                .values_list(
+                    "id",
+                    flat=True
+                )
+            )
+
+            archived_at = timezone.now()
+
+            GroupMembership.objects.filter(
+                student=student,
+                group__workspace=workspace,
+                left_at__isnull=True
+            ).update(left_at=archived_at)
+
             student.status_before_archive = student.status
-            student.archived_at = timezone.now()
+            student.archived_at = archived_at
 
         student.status = new_status
 

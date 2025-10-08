@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.students.models import Student
 
-from .models import StudentSubject, Subject, Group
+from .models import StudentSubject, Subject, Group, GroupMembership
 
 
 @transaction.atomic
@@ -126,3 +126,93 @@ def create_group(*, workspace, subject_id, name, description="", max_students=No
     group.save()
 
     return group
+
+
+@transaction.atomic
+def join_student_to_group(*, workspace, group_id, student_id):
+    student = Student.objects.select_for_update().get(id=student_id,workspace=workspace)
+
+    group = Group.objects.select_for_update().get(id=group_id, workspace=workspace)
+
+    if student.status != Student.Status.ACTIVE:
+        raise ValidationError(
+            "Only active students can join groups."
+        )
+
+    if not group.is_active:
+        raise ValidationError(
+            "Cannot join an inactive group."
+        )
+
+    if not group.subject.is_active:
+        raise ValidationError(
+            "The group's subject is inactive."
+        )
+
+    has_active_enrollment = (
+        StudentSubject.objects
+        .filter(
+            student=student,
+            subject_id=group.subject_id,
+            subject__workspace=workspace,
+            status=StudentSubject.Status.ACTIVE
+        )
+        .exists()
+    )
+
+    if not has_active_enrollment:
+        raise ValidationError(
+            "Student must have an active enrollment "
+            "in the group's subject."
+        )
+
+    active_memberships = GroupMembership.objects.filter(group=group, left_at__isnull=True)
+
+    if active_memberships.filter(student=student).exists():
+        raise ValidationError(
+            "Student is already a member of this group."
+        )
+
+    if group.max_students is not None:
+        current_count = active_memberships.count()
+
+        if current_count >= group.max_students:
+            raise ValidationError(
+                "The group has reached its maximum capacity."
+            )
+
+    membership = GroupMembership(group=group, student=student)
+
+    membership.full_clean()
+    membership.save()
+
+    return membership
+
+
+@transaction.atomic
+def leave_student_from_group(*, workspace, group_id, student_id):
+    student = Student.objects.select_for_update().get(
+            id=student_id,
+            workspace=workspace
+        )
+    
+
+    group = Group.objects.select_for_update().get(
+            id=group_id,
+            workspace=workspace
+        )
+
+    membership = GroupMembership.objects.select_for_update().get(
+            group=group,
+            student=student,
+            left_at__isnull=True
+        )
+    
+
+    membership.left_at = timezone.now()
+
+    membership.full_clean()
+
+    membership.save(update_fields=["left_at"])
+
+    return membership
