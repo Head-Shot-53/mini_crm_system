@@ -1,11 +1,18 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+from django.http import Http404
+
 
 from apps.workspaces.selectors import get_user_workspace
 
-from .forms import SubjectForm
-from .models import Subject
+from .forms import SubjectForm, GroupCreateForm, GroupEditForm
+from .models import Subject, Group
+from .selectors import get_active_group_memberships, get_workspace_groups_with_counts
+from .services import create_group, update_group
+
 
 @login_required
 def subject_list_view(request):
@@ -69,3 +76,158 @@ def subject_toggle_active_view(request, subject_id):
     messages.success(request, "Subject status updated successfully.")
 
     return redirect("academics:subject_list")
+
+
+def get_current_workspace(user):
+    workspace = get_user_workspace(user)
+
+    if workspace is None:
+        raise Http404(
+            "Workspace not found."
+        )
+
+    return workspace
+
+
+@login_required
+def group_list_view(request):
+    workspace = get_current_workspace(request.user)
+
+    groups = get_workspace_groups_with_counts(workspace=workspace)
+
+    return render(request, "academics/group_list.html", {"groups": groups})
+
+
+@login_required
+def group_create_view(request):
+    workspace = get_current_workspace(
+        request.user
+    )
+
+    form = GroupCreateForm(request.POST or None,
+        workspace=workspace
+    )
+
+    if request.method == "POST" and form.is_valid():
+        try:
+            group = create_group(
+                workspace=workspace,
+                subject_id=form.cleaned_data["subject"].id,
+                name=form.cleaned_data["name"],
+                description=form.cleaned_data["description"],
+                max_students=form.cleaned_data["max_students"]
+            )
+
+        except ValidationError as error:
+            for message in error.messages:
+                form.add_error(None, message)
+
+        except IntegrityError:
+            form.add_error(
+                None,
+                "Could not create the group. "
+                "Its name may already be in use."
+            )
+
+        except Group.subject.RelatedObjectDoesNotExist:
+            form.add_error(
+                "subject",
+                "The selected subject is no longer available."
+            )
+
+        else:
+            messages.success(request, "Group created successfully.")
+
+            return redirect("academics:group_detail", group_id=group.id)
+
+    return render(request, "academics/group_form.html",
+        {
+            "form": form,
+            "page_title": "Create Group"
+        }
+    )
+
+
+@login_required
+def group_detail_view(request, group_id):
+    workspace = get_current_workspace(
+        request.user
+    )
+
+    group = get_object_or_404(
+        get_workspace_groups_with_counts(
+            workspace=workspace
+        ),
+        id=group_id
+    )
+
+    memberships = get_active_group_memberships(
+        workspace=workspace,
+        group_id=group.id
+    )
+
+    available_seats = None
+
+    if group.max_students is not None:
+        available_seats = max(0, group.max_students - group.active_members_count)
+
+    return render(request, "academics/group_detail.html",
+        {
+            "group": group,
+            "memberships": memberships,
+            "available_seats": available_seats
+        }
+    )
+
+
+@login_required
+def group_edit_view(request, group_id):
+    workspace = get_current_workspace(request.user)
+
+    group = get_object_or_404(Group,
+        id=group_id,
+        workspace=workspace
+    )
+
+    form = GroupEditForm(
+        request.POST or None,
+        instance=group
+    )
+
+    if request.method == "POST" and form.is_valid():
+        try:
+            updated_group = update_group(
+                workspace=workspace,
+                group_id=group.id,
+                name=form.cleaned_data["name"],
+                description=form.cleaned_data["description"],
+                max_students=form.cleaned_data["max_students"]
+            )
+
+        except ValidationError as error:
+            for message in error.messages:
+                form.add_error(None, message)
+
+        except IntegrityError:
+            form.add_error(
+                None,
+                "Could not save the group. "
+                "Its name may already be in use."
+            )
+
+        except Group.DoesNotExist:
+            raise Http404(
+                "Group not found."
+            )
+
+        else:
+            messages.success(request, "Group updated successfully.")
+
+            return redirect("academics:group_detail", group_id=updated_group.id)
+
+    return render(request, "academics/group_form.html",
+        {
+            "form": form,
+            "page_title": "Edit Group"
+        }
+    )

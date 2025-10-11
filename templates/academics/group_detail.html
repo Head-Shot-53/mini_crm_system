@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    {{ group.name }} | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>{{ group.name }}</h1>
+
+
+<p>
+    <a href="{% url 'academics:group_edit' group.id %}">
+        Edit Group
+    </a>
+</p>
+
+
+<hr>
+
+
+<section>
+
+    <h2>Group Information</h2>
+
+
+    <p>
+        <strong>Subject:</strong>
+        {{ group.subject.name }}
+    </p>
+
+
+    <p>
+        <strong>Description:</strong>
+        {{ group.description|default:"—" }}
+    </p>
+
+
+    <p>
+        <strong>Status:</strong>
+
+        {% if group.is_active %}
+            Active
+        {% else %}
+            Inactive
+        {% endif %}
+    </p>
+
+
+    <p>
+        <strong>Created:</strong>
+        {{ group.created_at|date:"d.m.Y H:i" }}
+    </p>
+
+</section>
+
+
+<hr>
+
+
+<section>
+
+    <h2>Group Capacity</h2>
+
+
+    <p>
+        <strong>Current students:</strong>
+        {{ group.active_members_count }}
+    </p>
+
+
+    <p>
+        <strong>Maximum students:</strong>
+
+        {% if group.max_students %}
+            {{ group.max_students }}
+        {% else %}
+            Unlimited
+        {% endif %}
+    </p>
+
+
+    <p>
+        <strong>Available places:</strong>
+
+        {% if available_seats is not None %}
+            {{ available_seats }}
+        {% else %}
+            Unlimited
+        {% endif %}
+    </p>
+
+</section>
+
+
+<hr>
+
+
+<section>
+
+    <h2>Current Students</h2>
+
+
+    {% if memberships %}
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Student</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for membership in memberships %}
+
+                    <tr>
+
+                        <td>
+
+                            <a href="{% url 'students:student_detail' membership.student.id %}">
+                                {{ membership.student.full_name }}
+                            </a>
+
+                        </td>
+
+
+                        <td>
+                            {{ membership.student.get_status_display }}
+                        </td>
+
+
+                        <td>
+                            {{ membership.joined_at|date:"d.m.Y H:i" }}
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    {% else %}
+
+        <p>
+            This group does not have any students yet.
+        </p>
+
+    {% endif %}
+
+</section>
+
+
+<hr>
+
+
+<p>
+    <a href="{% url 'academics:group_list' %}">
+        Back to Groups
+    </a>
+</p>
+
+
+{% endblock %}

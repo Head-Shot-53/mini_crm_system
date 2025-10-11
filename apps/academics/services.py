@@ -216,3 +216,48 @@ def leave_student_from_group(*, workspace, group_id, student_id):
     membership.save(update_fields=["left_at"])
 
     return membership
+
+
+@transaction.atomic
+def update_group(*, workspace, group_id, name, description, max_students):
+    group = (
+        Group.objects
+        .select_for_update()
+        .get(
+            id=group_id,
+            workspace=workspace
+        )
+    )
+
+    current_members_count = (
+        GroupMembership.objects
+        .filter(
+            group=group,
+            left_at__isnull=True,
+        )
+        .count()
+    )
+
+    if max_students is not None:
+        if max_students < current_members_count:
+            raise ValidationError(
+                "Maximum capacity cannot be lower "
+                "than the number of current students."
+            )
+
+    group.name = name.strip()
+    group.description = description.strip()
+    group.max_students = max_students
+
+    group.full_clean()
+
+    group.save(
+        update_fields=[
+            "name",
+            "description",
+            "max_students",
+            "updated_at"
+        ]
+    )
+
+    return group

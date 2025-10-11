@@ -1,5 +1,7 @@
 from .models import Group, GroupMembership
 
+from django.db.models import Count, Q
+
 
 def get_workspace_groups(*, workspace, active_only=True):
     groups = Group.objects.filter(workspace=workspace).select_related("subject")
@@ -38,5 +40,22 @@ def get_group_membership_history(*, workspace, group_id):
         .order_by(
             "-joined_at",
             "id"
+        )
+    )
+
+
+def get_workspace_groups_with_counts(*, workspace):
+    return (
+        get_workspace_groups(
+            workspace=workspace,
+            active_only=False
+        )
+        .annotate(
+            active_members_count=Count(
+                "memberships",
+                filter=Q(
+                    memberships__left_at__isnull=True
+                )
+            )
         )
     )

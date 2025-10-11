@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Groups | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Teaching Groups</h1>
+
+
+<p>
+    <a href="{% url 'academics:group_create' %}">
+        Create Group
+    </a>
+</p>
+
+
+{% if groups %}
+
+    <table>
+
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Subject</th>
+                <th>Students</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+
+        <tbody>
+
+            {% for group in groups %}
+
+                <tr>
+
+                    <td>
+                        <a href="{% url 'academics:group_detail' group.id %}">
+                            {{ group.name }}
+                        </a>
+                    </td>
+
+
+                    <td>
+                        {{ group.subject.name }}
+                    </td>
+
+
+                    <td>
+                        {{ group.active_members_count }}
+
+                        /
+
+                        {% if group.max_students %}
+                            {{ group.max_students }}
+                        {% else %}
+                            Unlimited
+                        {% endif %}
+                    </td>
+
+
+                    <td>
+                        {% if group.is_active %}
+                            Active
+                        {% else %}
+                            Inactive
+                        {% endif %}
+                    </td>
+
+
+                    <td>
+
+                        <a href="{% url 'academics:group_detail' group.id %}">
+                            View
+                        </a>
+
+                        <a href="{% url 'academics:group_edit' group.id %}">
+                            Edit
+                        </a>
+
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+{% else %}
+
+    <p>
+        You have not created any groups yet.
+    </p>
+
+{% endif %}
+
+
+{% endblock %}

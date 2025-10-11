@@ -35,6 +35,10 @@
                 Students
             </a>
 
+            <a href="{% url 'academics:group_list' %}">
+                Groups
+            </a>
+
             <form
                 method="post"
                 action="{% url 'accounts:logout' %}"
