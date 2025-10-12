@@ -1,6 +1,8 @@
 from django import forms
 
-from .models import Subject, Group
+from .models import Subject, Group, GroupMembership, StudentSubject
+
+from apps.students.models import Student
 
 class SubjectForm(forms.ModelForm):
     class Meta:
@@ -77,3 +79,49 @@ class GroupCreateForm(GroupBaseForm):
 
 class GroupEditForm(GroupBaseForm):
     pass
+
+
+class GroupJoinForm(forms.Form):
+    student = forms.ModelChoiceField(
+        queryset=Student.objects.none(),
+        label="Student",
+        empty_label="Select student"
+    )
+
+    def __init__(self, *args, workspace, group, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        active_members = (
+            GroupMembership.objects
+            .filter(
+                group=group,
+                left_at__isnull=True,
+            )
+            .values("student_id")
+        )
+
+        eligible_students = (
+            Student.objects
+            .filter(
+                workspace=workspace,
+                status=Student.Status.ACTIVE,
+                subject_enrollments__subject=group.subject,
+                subject_enrollments__subject__workspace=workspace,
+                subject_enrollments__status=(
+                    StudentSubject.Status.ACTIVE
+                )
+            )
+            .exclude(
+                id__in=active_members,
+            )
+            .order_by("last_name","first_name", "id"))
+
+        if (
+            group.workspace_id != workspace.id
+            or group.subject.workspace_id != workspace.id
+            or not group.is_active
+            or not group.subject.is_active
+        ):
+            eligible_students = Student.objects.none()
+
+        self.fields["student"].queryset = eligible_students

@@ -57,6 +57,48 @@
 </section>
 
 
+<section>
+
+    <h2>Group Management</h2>
+
+    {% if group.is_active %}
+
+        <form
+            method="post"
+            action="{% url 'academics:group_status' group.id 'deactivate' %}"
+        >
+
+            {% csrf_token %}
+
+            <button
+                type="submit"
+                onclick="return confirm('Deactivate this group?');"
+            >
+                Deactivate Group
+            </button>
+
+        </form>
+
+    {% else %}
+
+        <form
+            method="post"
+            action="{% url 'academics:group_status' group.id 'activate' %}"
+        >
+
+            {% csrf_token %}
+
+            <button type="submit">
+                Activate Group
+            </button>
+
+        </form>
+
+    {% endif %}
+
+</section>
+
+
 <hr>
 
 
@@ -102,7 +144,6 @@
 
     <h2>Current Students</h2>
 
-
     {% if memberships %}
 
         <table>
@@ -113,10 +154,10 @@
                     <th>Student</th>
                     <th>Status</th>
                     <th>Joined</th>
+                    <th>Actions</th>
                 </tr>
 
             </thead>
-
 
             <tbody>
 
@@ -132,14 +173,32 @@
 
                         </td>
 
-
                         <td>
                             {{ membership.student.get_status_display }}
                         </td>
 
-
                         <td>
                             {{ membership.joined_at|date:"d.m.Y H:i" }}
+                        </td>
+
+                        <td>
+
+                            <form
+                                method="post"
+                                action="{% url 'academics:group_leave' group.id membership.student.id %}"
+                            >
+
+                                {% csrf_token %}
+
+                                <button
+                                    type="submit"
+                                    onclick="return confirm('Remove this student from the group?');"
+                                >
+                                    Remove
+                                </button>
+
+                            </form>
+
                         </td>
 
                     </tr>
@@ -153,8 +212,147 @@
     {% else %}
 
         <p>
-            This group does not have any students yet.
+            This group does not have any current students.
         </p>
+
+    {% endif %}
+
+</section>
+
+
+<hr>
+
+<section>
+
+    <h2>Add Student</h2>
+
+    {% if not group.is_active %}
+
+        <p>
+            This group is inactive.
+            Activate it to add new students.
+        </p>
+
+    {% elif not group.subject.is_active %}
+
+        <p>
+            The group's subject is inactive.
+            New students cannot be added.
+        </p>
+
+    {% elif not can_join %}
+
+        <p>
+            This group has reached its maximum capacity.
+        </p>
+
+    {% else %}
+
+        <form
+            method="post"
+            action="{% url 'academics:group_join' group.id %}"
+        >
+
+            {% csrf_token %}
+
+            {{ join_form.as_p }}
+
+            <button type="submit">
+                Add to Group
+            </button>
+
+        </form>
+
+    {% endif %}
+
+</section>
+
+
+<hr>
+
+<section>
+
+    <h2>Membership History</h2>
+
+    {% if history_page.object_list %}
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Student</th>
+                    <th>Joined</th>
+                    <th>Left</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for membership in history_page %}
+
+                    <tr>
+
+                        <td>
+
+                            <a href="{% url 'students:student_detail' membership.student.id %}">
+                                {{ membership.student.full_name }}
+                            </a>
+
+                        </td>
+
+                        <td>
+                            {{ membership.joined_at|date:"d.m.Y H:i" }}
+                        </td>
+
+                        <td>
+                            {{ membership.left_at|date:"d.m.Y H:i" }}
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    {% else %}
+
+        <p>
+            No completed memberships yet.
+        </p>
+
+    {% endif %}
+
+
+    {% if history_page.has_other_pages %}
+
+        <nav aria-label="Membership history pagination">
+
+            {% if history_page.has_previous %}
+
+                <a href="?history_page={{ history_page.previous_page_number }}">
+                    Previous
+                </a>
+
+            {% endif %}
+
+            <span>
+                Page {{ history_page.number }}
+                of {{ history_page.paginator.num_pages }}
+            </span>
+
+            {% if history_page.has_next %}
+
+                <a href="?history_page={{ history_page.next_page_number }}">
+                    Next
+                </a>
+
+            {% endif %}
+
+        </nav>
 
     {% endif %}
 

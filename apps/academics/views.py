@@ -4,14 +4,17 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.http import Http404
+from django.views.decorators.http import require_POST
+from django.core.paginator import Paginator
 
 
 from apps.workspaces.selectors import get_user_workspace
 
-from .forms import SubjectForm, GroupCreateForm, GroupEditForm
-from .models import Subject, Group
-from .selectors import get_active_group_memberships, get_workspace_groups_with_counts
-from .services import create_group, update_group
+from apps.students.models import Student
+from .forms import SubjectForm, GroupCreateForm, GroupEditForm, GroupJoinForm
+from .models import Subject, Group, GroupMembership
+from .selectors import get_active_group_memberships, get_workspace_groups_with_counts, get_group_membership_history
+from .services import create_group, update_group, join_student_to_group, leave_student_from_group, change_group_status
 
 
 @login_required
@@ -150,6 +153,7 @@ def group_create_view(request):
 
 @login_required
 def group_detail_view(request, group_id):
+
     workspace = get_current_workspace(
         request.user
     )
@@ -166,16 +170,47 @@ def group_detail_view(request, group_id):
         group_id=group.id
     )
 
+    history = (
+        get_group_membership_history(
+            workspace=workspace,
+            group_id=group.id
+        )
+        .filter(
+            left_at__isnull=False
+        )
+    )
+
+    history_paginator = Paginator(history, 10)
+
+    history_page = history_paginator.get_page(
+        request.GET.get("history_page")
+    )
+
     available_seats = None
 
     if group.max_students is not None:
-        available_seats = max(0, group.max_students - group.active_members_count)
+        available_seats = max(
+            0,
+            group.max_students - group.active_members_count
+        )
+
+    can_join = (
+        group.is_active and group.subject.is_active
+        and available_seats is None or available_seats > 0)
+
+    join_form = GroupJoinForm(
+        workspace=workspace,
+        group=group
+    )
 
     return render(request, "academics/group_detail.html",
         {
             "group": group,
             "memberships": memberships,
-            "available_seats": available_seats
+            "history_page": history_page,
+            "available_seats": available_seats,
+            "can_join": can_join,
+            "join_form": join_form
         }
     )
 
@@ -230,4 +265,158 @@ def group_edit_view(request, group_id):
             "form": form,
             "page_title": "Edit Group"
         }
+    )
+
+
+@login_required
+@require_POST
+def group_join_view(request, group_id):
+    workspace = get_current_workspace(request.user)
+
+    group = get_object_or_404(
+        Group,
+        id=group_id,
+        workspace=workspace
+    )
+
+    form = GroupJoinForm(
+        request.POST,
+        workspace=workspace,
+        group=group
+    )
+
+    if not form.is_valid():
+        messages.error(request,
+            "The selected student is not eligible "
+            "to join this group."
+        )
+
+        return redirect(
+            "academics:group_detail",
+            group_id=group.id
+        )
+
+    try:
+        join_student_to_group(
+            workspace=workspace,
+            group_id=group.id,
+            student_id=form.cleaned_data["student"].id
+        )
+
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+
+    except IntegrityError:
+        messages.error(request,
+            "This student is already a member "
+            "or the operation could not be completed."
+        )
+
+    except Student.DoesNotExist:
+        messages.error(request,
+            "The selected student is no longer available."
+        )
+
+    except Group.DoesNotExist:
+        raise Http404("Group not found.")
+
+    else:
+        messages.success(request,
+            "Student added to the group successfully."
+        )
+
+    return redirect(
+        "academics:group_detail",
+        group_id=group.id
+    )
+
+
+@login_required
+@require_POST
+def group_leave_view(request, group_id, student_id):
+    workspace = get_current_workspace(
+        request.user
+    )
+
+    group = get_object_or_404(
+        Group,
+        id=group_id,
+        workspace=workspace
+    )
+
+    try:
+        leave_student_from_group(
+            workspace=workspace,
+            group_id=group.id,
+            student_id=student_id
+        )
+
+    except Student.DoesNotExist:
+        raise Http404("Student not found.")
+
+    except Group.DoesNotExist:
+        raise Http404("Group not found.")
+
+    except GroupMembership.DoesNotExist:
+        messages.error(request,
+            "This student is not a current "
+            "member of the group."
+        )
+
+    except ValidationError as error:
+        messages.error(request, error.messages[0])
+
+    else:
+        messages.success(request,
+            "Student removed from the group successfully."
+        )
+
+    return redirect(
+        "academics:group_detail",
+        group_id=group.id
+    )
+
+
+@login_required
+@require_POST
+def group_status_view(request, group_id, action):
+    if action not in {"activate", "deactivate"}:
+        raise Http404(
+            "Unknown group status action."
+        )
+
+    workspace = get_current_workspace(
+        request.user
+    )
+
+    group = get_object_or_404(
+        Group,
+        id=group_id,
+        workspace=workspace
+    )
+
+    try:
+        change_group_status(
+            workspace=workspace,
+            group_id=group.id,
+            action=action
+        )
+
+    except ValidationError as error:
+        messages.error(
+            request,
+            error.messages[0]
+        )
+
+    except Group.DoesNotExist:
+        raise Http404("Group not found.")
+
+    else:
+        messages.success(request,
+            "Group status updated successfully."
+        )
+
+    return redirect(
+        "academics:group_detail",
+        group_id=group.id
     )

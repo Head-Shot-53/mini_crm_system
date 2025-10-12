@@ -261,3 +261,69 @@ def update_group(*, workspace, group_id, name, description, max_students):
     )
 
     return group
+
+
+@transaction.atomic
+def change_group_status(*, workspace, group_id, action):
+    if action not in {"activate", "deactivate"}:
+        raise ValidationError(
+            "Unsupported group status action."
+        )
+
+    group = (
+        Group.objects
+        .select_for_update()
+        .get(
+            id=group_id,
+            workspace=workspace,
+        )
+    )
+
+    if action == "activate":
+
+        if group.is_active:
+            raise ValidationError(
+                "Group is already active."
+            )
+
+        if (
+            group.subject.workspace_id != workspace.id
+            or not group.subject.is_active
+        ):
+            raise ValidationError(
+                "Cannot activate a group "
+                "with an inactive or invalid subject."
+            )
+
+        current_members_count = (
+            GroupMembership.objects
+            .filter(
+                group=group,
+                left_at__isnull=True
+            )
+            .count()
+        )
+
+        if (
+            group.max_students is not None
+            and current_members_count > group.max_students
+        ):
+            raise ValidationError(
+                "Current membership exceeds group capacity."
+            )
+
+        group.is_active = True
+
+    else:
+
+        if not group.is_active:
+            raise ValidationError(
+                "Group is already inactive."
+            )
+
+        group.is_active = False
+
+    group.save(
+        update_fields=["is_active", "updated_at"])
+
+    return group

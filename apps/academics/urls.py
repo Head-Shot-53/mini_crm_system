@@ -14,5 +14,9 @@ urlpatterns = [
     path("groups/create/", group_create_view, name="group_create"),
     path("groups/<uuid:group_id>/", group_detail_view, name="group_detail"),
     path("groups/<uuid:group_id>/edit/", group_edit_view, name="group_edit"),
+
+    path("groups/<uuid:group_id>/join/", group_join_view, name="group_join"),
+    path("groups/<uuid:group_id>/members/<uuid:student_id>/leave/", group_leave_view, name="group_leave"),
+    path("groups/<uuid:group_id>/status/<str:action>/",group_status_view, name="group_status"),
     
 ]
