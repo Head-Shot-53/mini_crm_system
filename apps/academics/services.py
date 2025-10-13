@@ -107,10 +107,14 @@ def update_student_enrollment(*, workspace, student_id, enrollment_id, level, st
 
 @transaction.atomic
 def create_group(*, workspace, subject_id, name, description="", max_students=None):
-    subject = Subject.objects.get(
-        id=subject_id,
-        workspace=workspace,
-        is_active=True
+    subject = (
+        Subject.objects
+        .select_for_update()
+        .get(
+            id=subject_id,
+            workspace=workspace,
+            is_active=True
+        )
     )
 
     group = Group(
@@ -134,6 +138,11 @@ def join_student_to_group(*, workspace, group_id, student_id):
 
     group = Group.objects.select_for_update().get(id=group_id, workspace=workspace)
 
+    if not group.is_active:
+        raise ValidationError(
+            "Cannot join an inactive group."
+        )
+
     if student.status != Student.Status.ACTIVE:
         raise ValidationError(
             "Only active students can join groups."
@@ -144,7 +153,22 @@ def join_student_to_group(*, workspace, group_id, student_id):
             "Cannot join an inactive group."
         )
 
-    if not group.subject.is_active:
+    try:
+        subject = (
+            Subject.objects
+            .select_for_update()
+            .get(
+                id=group.subject_id,
+                workspace=workspace
+            )
+        )
+
+    except Subject.DoesNotExist:
+        raise ValidationError(
+            "The group's subject is unavailable."
+        )
+
+    if not subject.is_active:
         raise ValidationError(
             "The group's subject is inactive."
         )
@@ -286,13 +310,24 @@ def change_group_status(*, workspace, group_id, action):
                 "Group is already active."
             )
 
-        if (
-            group.subject.workspace_id != workspace.id
-            or not group.subject.is_active
-        ):
+        try:
+            subject = (
+                Subject.objects
+                .select_for_update()
+                .get(
+                    id=group.subject_id,
+                    workspace=workspace
+                )
+            )
+
+        except Subject.DoesNotExist:
             raise ValidationError(
-                "Cannot activate a group "
-                "with an inactive or invalid subject."
+                "Group subject is unavailable."
+            )
+
+        if not subject.is_active:
+            raise ValidationError(
+                "Cannot activate a group with an inactive subject."
             )
 
         current_members_count = (

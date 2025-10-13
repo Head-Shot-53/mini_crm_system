@@ -36,7 +36,7 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS",default=[])
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    "config.admin_apps.LumeraAdminConfig",
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

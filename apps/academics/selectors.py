@@ -4,12 +4,21 @@ from django.db.models import Count, Q
 
 
 def get_workspace_groups(*, workspace, active_only=True):
-    groups = Group.objects.filter(workspace=workspace).select_related("subject")
+    groups = (
+        Group.objects
+        .filter(
+            workspace=workspace,
+            subject__workspace=workspace
+        )
+        .select_related("subject")
+    )
 
     if active_only:
-        groups = groups.filter(is_active=True)
+        groups = groups.filter(
+            is_active=True
+        )
 
-    return groups.order_by("name", "id")
+    return groups.order_by("name", "id",)
 
 def get_active_group_memberships(*, workspace, group_id):
     return (
@@ -54,8 +63,9 @@ def get_workspace_groups_with_counts(*, workspace):
             active_members_count=Count(
                 "memberships",
                 filter=Q(
-                    memberships__left_at__isnull=True
-                )
+                    memberships__left_at__isnull=True,
+                    memberships__student__workspace=workspace
+                ),
             )
         )
     )

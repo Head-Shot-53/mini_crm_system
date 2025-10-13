@@ -2,6 +2,7 @@ import pytest
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.test import Client
 
 from apps.academics.models import Group, GroupMembership, Subject, StudentSubject
 
@@ -421,3 +422,67 @@ def test_group_detail_displays_membership_history(client, teacher, workspace, gr
     assert response.context[
         "group"
     ].active_members_count == 0
+
+
+def test_group_status_requires_csrf(teacher, group):
+
+    csrf_client = Client(enforce_csrf_checks=True)
+
+    csrf_client.force_login(teacher)
+
+    response = csrf_client.post(
+        reverse(
+            "academics:group_status",
+            kwargs={
+                "group_id": group.id,
+                "action": "deactivate"
+            }
+        )
+    )
+
+    assert response.status_code == 403
+
+    group.refresh_from_db()
+
+    assert group.is_active is True
+
+
+def test_group_status_accepts_valid_csrf(teacher, group):
+
+    csrf_client = Client(
+        enforce_csrf_checks=True,
+    )
+
+    csrf_client.force_login(teacher)
+
+    detail_url = reverse(
+        "academics:group_detail",
+        kwargs={
+            "group_id": group.id
+        }
+    )
+
+    response = csrf_client.get(detail_url)
+
+    assert response.status_code == 200
+
+    token = csrf_client.cookies["csrftoken"].value
+
+    status_url = reverse(
+        "academics:group_status",
+        kwargs={
+            "group_id": group.id,
+            "action": "deactivate"
+        }
+    )
+
+    response = csrf_client.post(
+        status_url,
+        HTTP_X_CSRFTOKEN=token
+    )
+
+    assert response.status_code == 302
+
+    group.refresh_from_db()
+
+    assert group.is_active is False

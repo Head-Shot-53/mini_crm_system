@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
@@ -65,18 +65,25 @@ def subject_edit_view(request, subject_id):
     return render(request, "academics/subject_form.html", {"form":form, "page_title" : "Edit Subject"})
 
 @login_required
+@require_POST
 def subject_toggle_active_view(request, subject_id):
-    if request.method != "POST":
-        return redirect("academics:subject_list")
+    workspace = get_current_workspace(request.user)
 
-    workspace = get_user_workspace(request.user)
+    with transaction.atomic():
+        subject = get_object_or_404(
+            Subject.objects.select_for_update(),
+            id=subject_id,
+            workspace=workspace
+        )
 
-    subject = get_object_or_404(Subject, id=subject_id, workspace=workspace)
+        subject.is_active = not subject.is_active
 
-    subject.is_active = not subject.is_active
+        subject.save(
+            update_fields=["is_active", "updated_at"])
 
-    subject.save(update_fields=("is_active", "updated_at"))
-    messages.success(request, "Subject status updated successfully.")
+    messages.success(request,
+        "Subject status updated successfully."
+    )
 
     return redirect("academics:subject_list")
 
@@ -221,7 +228,8 @@ def group_edit_view(request, group_id):
 
     group = get_object_or_404(Group,
         id=group_id,
-        workspace=workspace
+        workspace=workspace,
+        subject__workspace=workspace
     )
 
     form = GroupEditForm(
@@ -276,7 +284,8 @@ def group_join_view(request, group_id):
     group = get_object_or_404(
         Group,
         id=group_id,
-        workspace=workspace
+        workspace=workspace,
+        subject__workspace=workspace
     )
 
     form = GroupJoinForm(
@@ -341,7 +350,8 @@ def group_leave_view(request, group_id, student_id):
     group = get_object_or_404(
         Group,
         id=group_id,
-        workspace=workspace
+        workspace=workspace,
+        subject__workspace=workspace
     )
 
     try:
@@ -392,7 +402,8 @@ def group_status_view(request, group_id, action):
     group = get_object_or_404(
         Group,
         id=group_id,
-        workspace=workspace
+        workspace=workspace,
+        subject__workspace=workspace
     )
 
     try:
