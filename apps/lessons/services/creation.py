@@ -9,6 +9,10 @@ from apps.students.models import Student
 
 from apps.lessons.models import Lesson
 
+from .availability import ensure_slot_available,  lock_workspace_for_scheduling
+
+from .validators import validate_lesson_time
+
 
 def validate_lesson_time(*, start_at, end_at):
     if not isinstance(start_at, datetime):
@@ -47,6 +51,10 @@ def create_individual_lesson(*, workspace, student_id, subject_id, start_at, end
     validate_lesson_time(
         start_at=start_at,
         end_at=end_at
+    )
+
+    lock_workspace_for_scheduling(
+        workspace=workspace
     )
 
     student = (
@@ -95,6 +103,12 @@ def create_individual_lesson(*, workspace, student_id, subject_id, start_at, end
             "enrollment in this subject."
         )
 
+    ensure_slot_available(
+        workspace=workspace,
+        start_at=start_at,
+        end_at=end_at
+    )
+
     lesson = Lesson(
         workspace=workspace,
         student=student,
@@ -105,7 +119,6 @@ def create_individual_lesson(*, workspace, student_id, subject_id, start_at, end
     )
 
     lesson.full_clean()
-
     lesson.save()
 
     return lesson
@@ -116,6 +129,10 @@ def create_group_lesson(*, workspace, group_id, start_at, end_at, notes=""):
     validate_lesson_time(
         start_at=start_at,
         end_at=end_at
+    )
+
+    lock_workspace_for_scheduling(
+        workspace=workspace
     )
 
     group = (
@@ -148,6 +165,12 @@ def create_group_lesson(*, workspace, group_id, start_at, end_at, notes=""):
             "for an inactive subject."
         )
 
+    ensure_slot_available(
+        workspace=workspace,
+        start_at=start_at,
+        end_at=end_at
+    )
+
     lesson = Lesson(
         workspace=workspace,
         group=group,
@@ -158,7 +181,6 @@ def create_group_lesson(*, workspace, group_id, start_at, end_at, notes=""):
     )
 
     lesson.full_clean()
-
     lesson.save()
 
     return lesson

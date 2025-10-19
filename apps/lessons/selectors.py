@@ -31,3 +31,24 @@ def get_workspace_lessons(*, workspace):
             "subject"
         )
         .order_by("start_at", "id"))
+
+
+def get_schedule_conflicts(*, workspace, start_at, end_at, exclude_lesson_id=None):
+    conflicts = Lesson.objects.filter(
+        workspace=workspace,
+
+        status__in=[
+            Lesson.Status.SCHEDULED,
+            Lesson.Status.COMPLETED
+        ],
+
+        start_at__lt=end_at,
+        end_at__gt=start_at
+    )
+
+    if exclude_lesson_id is not None:
+        conflicts = conflicts.exclude(
+            id=exclude_lesson_id
+        )
+
+    return conflicts.order_by("start_at", "id")

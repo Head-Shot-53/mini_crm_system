@@ -8,6 +8,10 @@ from django.core.exceptions import ValidationError
 from django.db.models import F, Q
 from django.utils import timezone
 
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import RangeBoundary, RangeOperators
+
+from .db_expressions import TsTzRange
 
 class Lesson(models.Model):
 
@@ -61,6 +65,33 @@ class Lesson(models.Model):
                     end_at__gt=F("start_at")
                 ),
                 name="lesson_valid_time_range"
+            ),
+
+            ExclusionConstraint(
+                name="lesson_no_workspace_time_overlap",
+
+                expressions=[
+                    (
+                        TsTzRange(
+                            "start_at",
+                            "end_at",
+                            RangeBoundary()
+                        ),
+                        RangeOperators.OVERLAPS
+                    ),
+
+                    (
+                        "workspace",
+                        RangeOperators.EQUAL
+                    )
+                ],
+
+                condition=Q(
+                    status__in=[
+                        "scheduled",
+                        "completed"
+                    ],
+                )
             )
         ]
 
