@@ -52,3 +52,15 @@ def get_schedule_conflicts(*, workspace, start_at, end_at, exclude_lesson_id=Non
         )
 
     return conflicts.order_by("start_at", "id")
+
+
+def get_calendar_lessons(*, workspace, period_start, period_end):
+    return (
+        get_workspace_lessons(
+            workspace=workspace,
+        )
+        .filter(
+            start_at__lt=period_end,
+            end_at__gt=period_start
+        )
+    )

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Lesson | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Lesson Details</h1>
+
+
+<section>
+
+    <h2>General Information</h2>
+
+    <p>
+        <strong>Subject:</strong>
+        {{ lesson.subject.name }}
+    </p>
+
+    <p>
+        <strong>Type:</strong>
+        {{ lesson.lesson_type|title }}
+    </p>
+
+
+    {% if lesson.student %}
+
+        <p>
+            <strong>Student:</strong>
+
+            <a href="{% url 'students:student_detail' lesson.student.id %}">
+                {{ lesson.student.full_name }}
+            </a>
+        </p>
+
+    {% endif %}
+
+
+    {% if lesson.group %}
+
+        <p>
+            <strong>Group:</strong>
+
+            <a href="{% url 'academics:group_detail' lesson.group.id %}">
+                {{ lesson.group.name }}
+            </a>
+        </p>
+
+    {% endif %}
+
+    <p>
+        <strong>Status:</strong>
+        {{ lesson.get_status_display }}
+    </p>
+
+</section>
+
+
+<hr>
+
+
+<section>
+
+    <h2>Schedule</h2>
+
+    <p>
+        <strong>Start:</strong>
+        {{ start_local|date:"d.m.Y H:i" }}
+    </p>
+
+    <p>
+        <strong>End:</strong>
+        {{ end_local|date:"d.m.Y H:i" }}
+    </p>
+
+    <p>
+        <strong>Time zone:</strong>
+        {{ timezone_name }}
+    </p>
+
+    <p>
+        <strong>Duration:</strong>
+        {{ lesson.duration_minutes|floatformat:0 }}
+        minutes
+    </p>
+
+</section>
+
+
+<hr>
+
+
+<section>
+
+    <h2>Notes</h2>
+
+    {% if lesson.notes %}
+
+        {{ lesson.notes|linebreaks }}
+
+    {% else %}
+
+        <p>No notes.</p>
+
+    {% endif %}
+
+</section>
+
+
+<hr>
+
+
+{% if lesson.status == "scheduled" %}
+
+    <p>
+        <a href="{% url 'lessons:reschedule' lesson.id %}">
+            Reschedule Lesson
+        </a>
+    </p>
+
+{% endif %}
+
+
+<p>
+    <a href="{% url 'lessons:calendar' %}">
+        Back to Calendar
+    </a>
+</p>
+
+
+{% endblock %}
+
+

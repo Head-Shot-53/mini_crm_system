@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Calendar | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<style>
+
+    .calendar-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .calendar-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(180px, 1fr));
+        gap: 12px;
+        overflow-x: auto;
+    }
+
+    .calendar-day {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 14px;
+        min-height: 180px;
+    }
+
+    .calendar-lesson {
+        display: block;
+        padding: 10px;
+        margin-top: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .calendar-lesson:hover {
+        background: #f4f4f4;
+    }
+
+    .calendar-day-header {
+        margin-bottom: 16px;
+    }
+
+    .calendar-empty {
+        color: #777;
+    }
+
+    .calendar-status {
+        display: block;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+
+    @media (max-width: 1200px) {
+
+        .calendar-grid {
+            grid-template-columns: repeat(7, minmax(180px, 1fr));
+            overflow-x: auto;
+        }
+
+    }
+
+</style>
+
+
+<h1>Lesson Calendar</h1>
+
+
+<div class="calendar-toolbar">
+
+    <div class="calendar-actions">
+
+        <a href="{% url 'lessons:calendar' %}?view=day&amp;date={{ selected_date|date:'Y-m-d' }}">
+            Day
+        </a>
+
+        <a href="{% url 'lessons:calendar' %}?view=week&amp;date={{ selected_date|date:'Y-m-d' }}">
+            Week
+        </a>
+
+    </div>
+
+
+    <div class="calendar-actions">
+
+        <a href="?view={{ calendar_mode }}&amp;date={{ previous_date|date:'Y-m-d' }}">
+            Previous
+        </a>
+
+        <a href="{% url 'lessons:calendar' %}">
+            Today
+        </a>
+
+        <a href="?view={{ calendar_mode }}&amp;date={{ next_date|date:'Y-m-d' }}">
+            Next
+        </a>
+
+    </div>
+
+
+    <div class="calendar-actions">
+
+        <a href="{% url 'lessons:create_individual' %}">
+            Individual Lesson
+        </a>
+
+        <a href="{% url 'lessons:create_group' %}">
+            Group Lesson
+        </a>
+
+    </div>
+
+</div>
+
+
+<p>
+    Time zone:
+    <strong>{{ timezone_name }}</strong>
+</p>
+
+
+{% if calendar_mode == "week" %}
+
+    <h2>
+        Week of {{ days.0.date|date:"d.m.Y" }}
+    </h2>
+
+{% else %}
+
+    <h2>
+        {{ selected_date|date:"l, d.m.Y" }}
+    </h2>
+
+{% endif %}
+
+
+<div
+    {% if calendar_mode == "week" %}
+        class="calendar-grid"
+    {% endif %}
+>
+
+    {% for day in days %}
+
+        <section class="calendar-day">
+
+            <div class="calendar-day-header">
+
+                <h3>
+
+                    <a href="{% url 'lessons:calendar' %}?view=day&amp;date={{ day.date|date:'Y-m-d' }}">
+                        {{ day.date|date:"D, d.m" }}
+                    </a>
+
+                </h3>
+
+            </div>
+
+
+            {% for entry in day.entries %}
+
+                <a
+                    class="calendar-lesson"
+                    href="{% url 'lessons:lesson_detail' entry.lesson.id %}"
+                >
+
+                    <strong>
+
+                        {{ entry.local_start|date:"d.m H:i" }}
+
+                        —
+
+                        {{ entry.local_end|date:"d.m H:i" }}
+
+                    </strong>
+
+
+                    <p>
+                        {{ entry.lesson.subject.name }}
+                    </p>
+
+
+                    {% if entry.lesson.student %}
+
+                        <p>
+                            {{ entry.lesson.student.full_name }}
+                        </p>
+
+                    {% else %}
+
+                        <p>
+                            {{ entry.lesson.group.name }}
+                        </p>
+
+                    {% endif %}
+
+
+                    <span class="calendar-status">
+                        {{ entry.lesson.get_status_display }}
+                    </span>
+
+                </a>
+
+            {% empty %}
+
+                <p class="calendar-empty">
+                    No lessons.
+                </p>
+
+            {% endfor %}
+
+        </section>
+
+    {% endfor %}
+
+</div>
+
+
+{% endblock %}
