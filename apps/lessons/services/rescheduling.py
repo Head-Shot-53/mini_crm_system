@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils import timezone
 
 from apps.lessons.models import Lesson
 
@@ -31,6 +32,12 @@ def reschedule_lesson(*, workspace, lesson_id, start_at, end_at):
     if lesson.status != Lesson.Status.SCHEDULED:
         raise ValidationError(
             "Only scheduled lessons can be rescheduled."
+        )
+
+    if lesson.start_at <= timezone.now():
+        raise ValidationError(
+            "A lesson that has already started "
+            "cannot be rescheduled."
         )
 
     ensure_slot_available(

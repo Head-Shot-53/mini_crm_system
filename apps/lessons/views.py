@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.http import Http404
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from apps.academics.models import Group, Subject
 from apps.students.models import Student
@@ -18,6 +19,7 @@ from .models import Lesson
 from .selectors import get_workspace_lessons
 from .services.creation import create_group_lesson, create_individual_lesson
 from .services.rescheduling import reschedule_lesson
+from .services.lifecycle import change_lesson_status
 
 from .timezone_utils import get_calendar_timezone
 from .selectors import get_calendar_lessons
@@ -189,6 +191,20 @@ def lesson_detail_view(request, lesson_id):
         id=lesson_id
     )
 
+    now = timezone.now()
+
+    can_complete = (
+        lesson.status == Lesson.Status.SCHEDULED
+        and lesson.end_at <= now
+    )
+
+    can_cancel = (
+        lesson.status == Lesson.Status.SCHEDULED
+        and lesson.start_at > now
+    )
+
+    can_reschedule = can_cancel
+
     calendar_tz = get_calendar_timezone()
 
     return render(request, "lessons/lesson_detail.html",
@@ -205,7 +221,11 @@ def lesson_detail_view(request, lesson_id):
                 calendar_tz
             ),
 
-            "timezone_name": calendar_tz.key
+            "timezone_name": calendar_tz.key,
+
+            "can_complete": can_complete,
+            "can_cancel": can_cancel,
+            "can_reschedule": can_reschedule,
         }
     )
 
@@ -454,4 +474,62 @@ def calendar_view(request):
             "next_date": next_date,
             "timezone_name": calendar_tz.key
         }
+    )
+
+
+@login_required
+@require_POST
+def lesson_status_view(request, lesson_id, action):
+    if action not in {"complete", "cancel"}:
+        raise Http404(
+            "Unknown lesson status action."
+        )
+
+    workspace = get_current_workspace(request.user)
+
+    lesson = get_object_or_404(get_workspace_lessons(workspace=workspace), id=lesson_id)
+
+    reason = ""
+
+    if action == "cancel":
+        reason = request.POST.get(
+            "cancellation_reason",
+            ""
+        )
+
+    try:
+        change_lesson_status(
+            workspace=workspace,
+            lesson_id=lesson.id,
+            action=action,
+            reason=reason
+        )
+
+    except ValidationError as error:
+        messages.error(
+            request,
+            error.messages[0]
+        )
+
+    except IntegrityError:
+        messages.error(
+            request,
+            "The lesson could not be updated. "
+            "Please check its current state."
+        )
+
+    except Lesson.DoesNotExist:
+        raise Http404(
+            "Lesson not found."
+        )
+
+    else:
+        messages.success(
+            request,
+            "Lesson status updated successfully."
+        )
+
+    return redirect(
+        "lessons:lesson_detail",
+        lesson_id=lesson.id
     )

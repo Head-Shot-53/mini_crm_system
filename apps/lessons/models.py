@@ -36,6 +36,12 @@ class Lesson(models.Model):
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED)
 
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    cancellation_reason = models.TextField(blank=True, default="")
+
     notes = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -94,6 +100,17 @@ class Lesson(models.Model):
                 )
             )
         ]
+
+        models.CheckConstraint(
+            condition=models.Q(
+                status__in=[
+                    "scheduled",
+                    "completed",
+                    "cancelled"
+                ]
+            ),
+            name="lesson_valid_status"
+        ),
 
         indexes = [
             models.Index(

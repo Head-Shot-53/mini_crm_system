@@ -113,15 +113,114 @@
 <hr>
 
 
-{% if lesson.status == "scheduled" %}
+<section>
 
-    <p>
-        <a href="{% url 'lessons:reschedule' lesson.id %}">
-            Reschedule Lesson
-        </a>
-    </p>
+    <h2>Lesson Management</h2>
 
-{% endif %}
+
+    {% if can_reschedule %}
+
+        <p>
+
+            <a href="{% url 'lessons:reschedule' lesson.id %}">
+                Reschedule Lesson
+            </a>
+
+        </p>
+
+    {% endif %}
+
+
+    {% if can_complete %}
+
+        <form
+            method="post"
+            action="{% url 'lessons:lesson_status' lesson.id 'complete' %}"
+        >
+
+            {% csrf_token %}
+
+            <button
+                type="submit"
+                onclick="return confirm('Complete this lesson?');"
+            >
+                Complete Lesson
+            </button>
+
+        </form>
+
+    {% endif %}
+
+
+    {% if can_cancel %}
+
+        <form
+            method="post"
+            action="{% url 'lessons:lesson_status' lesson.id 'cancel' %}"
+        >
+
+            {% csrf_token %}
+
+            <div>
+
+                <label for="cancellation_reason">
+                    Cancellation reason
+                </label>
+
+                <textarea
+                    id="cancellation_reason"
+                    name="cancellation_reason"
+                    rows="3"
+                ></textarea>
+
+            </div>
+
+
+            <button
+                type="submit"
+                onclick="return confirm('Cancel this lesson?');"
+            >
+                Cancel Lesson
+            </button>
+
+        </form>
+
+    {% endif %}
+
+
+    {% if lesson.status == "completed" %}
+
+        <p>
+            This lesson has been completed.
+        </p>
+
+        <p>
+            <strong>Completed at:</strong>
+
+            {{ lesson.completed_at|date:"d.m.Y H:i" }}
+        </p>
+
+    {% elif lesson.status == "cancelled" %}
+
+        <p>
+            This lesson has been cancelled.
+        </p>
+
+        <p>
+            <strong>Cancelled at:</strong>
+
+            {{ lesson.cancelled_at|date:"d.m.Y H:i" }}
+        </p>
+
+        <p>
+            <strong>Reason:</strong>
+
+            {{ lesson.cancellation_reason|default:"No reason provided." }}
+        </p>
+
+    {% endif %}
+
+</section>
 
 
 <p>

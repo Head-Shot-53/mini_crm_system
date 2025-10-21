@@ -4,6 +4,8 @@ from django.utils import timezone
 
 from apps.students.models import Student
 from apps.academics.models import Group, GroupMembership
+from apps.workspaces.models import Workspace
+from apps.lessons.services.lifecycle import cancel_future_individual_lessons_for_archived_student
 
 STATUS_TRANSITIONS = {
     "pause": {
@@ -31,10 +33,15 @@ STATUS_TRANSITIONS = {
 }
 
 @transaction.atomic
-def change_student_status(*,workspace,student_id,action):
+def change_student_status(*, workspace, student_id, action):
     if action not in STATUS_TRANSITIONS and action != "restore":
         raise ValidationError(
             "Unsupported student status action."
+        )
+
+    if action == "archive":
+        Workspace.objects.select_for_update().get(
+            id=workspace.id,
         )
 
     student = (Student.objects.select_for_update().get(id=student_id,workspace=workspace))
@@ -91,10 +98,7 @@ def change_student_status(*,workspace,student_id,action):
                     workspace=workspace
                 )
                 .order_by("id")
-                .values_list(
-                    "id",
-                    flat=True
-                )
+                .values_list("id", flat=True)
             )
 
             archived_at = timezone.now()
@@ -103,7 +107,15 @@ def change_student_status(*,workspace,student_id,action):
                 student=student,
                 group__workspace=workspace,
                 left_at__isnull=True
-            ).update(left_at=archived_at)
+            ).update(
+                left_at=archived_at
+            )
+
+            cancel_future_individual_lessons_for_archived_student(
+                workspace=workspace,
+                student=student,
+                timestamp=archived_at
+            )
 
             student.status_before_archive = student.status
             student.archived_at = archived_at
