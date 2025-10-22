@@ -7,6 +7,8 @@ from datetime import datetime
 from django.core.exceptions import ValidationError
 from django.db.models import F, Q
 from django.utils import timezone
+from django.conf import settings
+
 
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import RangeBoundary, RangeOperators
@@ -35,6 +37,8 @@ class Lesson(models.Model):
     end_at = models.DateTimeField()
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED)
+
+    attendance_initialized_at = models.DateTimeField(null=True, blank=True)
 
     completed_at = models.DateTimeField(null=True, blank=True)
 
@@ -211,3 +215,170 @@ class Lesson(models.Model):
             f"{self.subject.name} | "
             f"{self.start_at:%Y-%m-%d %H:%M}"
         )
+
+
+class LessonAttendance(models.Model):
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PRESENT = "present", "Present"
+        ABSENT = "absent", "Absent"
+        LATE = "late", "Late"
+        EXCUSED = "excused", "Excused"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    lesson = models.ForeignKey(Lesson, on_delete=models.PROTECT, related_name="attendance_records")
+
+    student = models.ForeignKey("students.Student",on_delete=models.PROTECT, related_name="lesson_attendances")
+
+    group_membership = models.ForeignKey(
+        "academics.GroupMembership",
+        on_delete=models.PROTECT,
+        related_name="lesson_attendances",
+        null=True,
+        blank=True
+    )
+
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
+    notes = models.TextField(blank=True, default="")
+
+    recorded_at = models.DateTimeField(null=True, blank=True)
+
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="recorded_attendances",
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = (
+            "student__last_name",
+            "student__first_name",
+            "id"
+        )
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "lesson",
+                    "student"
+                ],
+                name="unique_lesson_attendance_student"
+            ),
+
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=[
+                        "pending",
+                        "present",
+                        "absent",
+                        "late",
+                        "excused"
+                    ],
+                ),
+                name="lesson_attendance_valid_status"
+            ),
+
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status="pending",
+                        recorded_at__isnull=True,
+                        recorded_by__isnull=True
+                    )
+                    |
+                    (
+                        models.Q(
+                            status__in=[
+                                "present",
+                                "absent",
+                                "late",
+                                "excused"
+                            ],
+                        )
+                        & models.Q(
+                            recorded_at__isnull=False,
+                            recorded_by__isnull=False
+                        )
+                    )
+                ),
+                name="attendance_recording_consistency"
+            )
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "lesson",
+                    "status"
+                ],
+                name="attendance_lesson_status_idx"
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+
+        if self.lesson_id and self.student_id:
+
+            if (
+                self.lesson.workspace_id
+                != self.student.workspace_id
+            ):
+                errors["student"] = (
+                    "Lesson and student must belong "
+                    "to the same workspace."
+                )
+
+            if self.lesson.group_id is None:
+
+                if self.lesson.student_id != self.student_id:
+                    errors["student"] = (
+                        "Individual attendance must "
+                        "belong to the lesson's student."
+                    )
+
+                if self.group_membership_id is not None:
+                    errors["group_membership"] = (
+                        "Individual attendance cannot "
+                        "have a group membership."
+                    )
+
+            else:
+
+                if self.group_membership_id is None:
+                    errors["group_membership"] = (
+                        "Group attendance requires "
+                        "a group membership."
+                    )
+
+                else:
+                    membership = self.group_membership
+
+                    if membership.group_id != self.lesson.group_id:
+                        errors["group_membership"] = (
+                            "Membership belongs "
+                            "to another group."
+                        )
+
+                    if membership.student_id != self.student_id:
+                        errors["group_membership"] = (
+                            "Membership belongs "
+                            "to another student."
+                        )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"{self.student.full_name} — {self.lesson.id}"

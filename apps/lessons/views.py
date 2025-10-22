@@ -8,21 +8,22 @@ from django.db import IntegrityError
 from django.http import Http404
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.db.models import Count, Q
 
 from apps.academics.models import Group, Subject
 from apps.students.models import Student
 from apps.workspaces.selectors import get_user_workspace
 
-from .forms import GroupLessonCreateForm, IndividualLessonCreateForm, LessonRescheduleForm
-from .models import Lesson
+from .forms import GroupLessonCreateForm, IndividualLessonCreateForm, LessonRescheduleForm, AttendanceMarkForm
+from .models import Lesson, LessonAttendance
 
-from .selectors import get_workspace_lessons
+from .selectors import get_workspace_lessons, get_lesson_attendance, get_calendar_lessons
 from .services.creation import create_group_lesson, create_individual_lesson
 from .services.rescheduling import reschedule_lesson
 from .services.lifecycle import change_lesson_status
+from .services.attendance import set_lesson_attendance
 
 from .timezone_utils import get_calendar_timezone
-from .selectors import get_calendar_lessons
 
 
 def get_current_workspace(user):
@@ -531,5 +532,173 @@ def lesson_status_view(request, lesson_id, action):
 
     return redirect(
         "lessons:lesson_detail",
+        lesson_id=lesson.id
+    )
+
+
+@login_required
+def lesson_attendance_view(request, lesson_id):
+    workspace = get_current_workspace(
+        request.user
+    )
+
+    lesson = get_object_or_404(
+        get_workspace_lessons(
+            workspace=workspace
+        ),
+        id=lesson_id
+    )
+
+    is_ready = (
+        lesson.status == Lesson.Status.COMPLETED
+        and lesson.attendance_initialized_at is not None
+    )
+
+    is_legacy = (
+        lesson.status == Lesson.Status.COMPLETED
+        and lesson.attendance_initialized_at is None
+    )
+
+    entries = []
+
+    stats = {
+        "total": 0,
+        "pending": 0,
+        "present": 0,
+        "absent": 0,
+        "late": 0,
+        "excused": 0
+    }
+
+    if is_ready:
+
+        records = get_lesson_attendance(
+            workspace=workspace,
+            lesson=lesson
+        )
+
+        stats = records.aggregate(
+            total=Count("id"),
+
+            pending=Count(
+                "id",
+                filter=Q(status=LessonAttendance.Status.PENDING)
+            ),
+
+            present=Count(
+                "id",
+                filter=Q(status=LessonAttendance.Status.PRESENT)
+            ),
+
+            absent=Count(
+                "id",
+                filter=Q(status=LessonAttendance.Status.ABSENT)
+            ),
+
+            late=Count(
+                "id",
+                filter=Q(status=LessonAttendance.Status.LATE)
+            ),
+
+            excused=Count(
+                "id",
+                filter=Q(status=LessonAttendance.Status.EXCUSED)
+            )
+        )
+
+        for attendance in records:
+
+            initial_status = ""
+
+            if attendance.status != LessonAttendance.Status.PENDING:
+                initial_status = attendance.status
+
+            entries.append(
+                {
+                    "attendance": attendance,
+
+                    "form": AttendanceMarkForm(
+                        initial={
+                            "status": initial_status,
+                            "notes": attendance.notes
+                        }
+                    )
+                }
+            )
+
+    return render(request, "lessons/attendance.html",
+        {
+            "lesson": lesson,
+            "entries": entries,
+            "stats": stats,
+            "is_ready": is_ready,
+            "is_legacy": is_legacy
+        },
+    )
+
+
+@login_required
+@require_POST
+def attendance_mark_view(request, lesson_id, attendance_id):
+    workspace = get_current_workspace(request.user)
+
+    lesson = get_object_or_404(
+        get_workspace_lessons(
+            workspace=workspace
+        ),
+        id=lesson_id
+    )
+
+    attendance = get_object_or_404(
+        get_lesson_attendance(
+            workspace=workspace,
+            lesson=lesson
+        ),
+        id=attendance_id
+    )
+
+    form = AttendanceMarkForm(request.POST)
+
+    if not form.is_valid():
+
+        messages.error(
+            request,
+            "Invalid attendance data."
+        )
+
+    else:
+
+        try:
+            set_lesson_attendance(
+                workspace=workspace,
+                lesson_id=lesson.id,
+                attendance_id=attendance.id,
+                status=form.cleaned_data["status"],
+                notes=form.cleaned_data["notes"],
+                recorded_by=request.user
+            )
+
+        except ValidationError as error:
+            messages.error(
+                request,
+                error.messages[0]
+            )
+
+        except (
+            Lesson.DoesNotExist,
+            LessonAttendance.DoesNotExist
+        ):
+            raise Http404(
+                "Attendance record not found."
+            )
+
+        else:
+            messages.success(
+                request,
+                "Attendance updated successfully."
+            )
+
+    return redirect(
+        "lessons:attendance",
         lesson_id=lesson.id
     )

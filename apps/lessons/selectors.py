@@ -1,6 +1,6 @@
 from django.db.models import F, Q
 
-from .models import Lesson
+from .models import Lesson, LessonAttendance
 
 
 def get_workspace_lessons(*, workspace):
@@ -62,5 +62,26 @@ def get_calendar_lessons(*, workspace, period_start, period_end):
         .filter(
             start_at__lt=period_end,
             end_at__gt=period_start
+        )
+    )
+
+
+def get_lesson_attendance(*, workspace, lesson):
+    return (
+        LessonAttendance.objects
+        .filter(
+            lesson=lesson,
+            lesson__workspace=workspace,
+            student__workspace=workspace
+        )
+        .select_related(
+            "student",
+            "recorded_by",
+            "group_membership"
+        )
+        .order_by(
+            "student__last_name",
+            "student__first_name",
+            "id"
         )
     )

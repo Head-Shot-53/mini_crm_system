@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+    Attendance | Lumera
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Lesson Attendance</h1>
+
+
+<section>
+
+    <h2>Lesson Information</h2>
+
+    <p>
+        <strong>Subject:</strong>
+        {{ lesson.subject.name }}
+    </p>
+
+    <p>
+        <strong>Type:</strong>
+        {{ lesson.lesson_type|title }}
+    </p>
+
+    <p>
+        <strong>Status:</strong>
+        {{ lesson.get_status_display }}
+    </p>
+
+</section>
+
+
+<hr>
+
+
+{% if is_legacy %}
+
+    <p>
+        Attendance was not initialized for
+        this historical lesson.
+    </p>
+
+    <p>
+        Historical attendance requires
+        separate review.
+    </p>
+
+
+{% elif not is_ready %}
+
+    <p>
+        Complete this lesson before
+        recording attendance.
+    </p>
+
+
+{% else %}
+
+    <section>
+
+        <h2>Attendance Statistics</h2>
+
+        <p>Total: {{ stats.total }}</p>
+
+        <p>Pending: {{ stats.pending }}</p>
+
+        <p>Present: {{ stats.present }}</p>
+
+        <p>Absent: {{ stats.absent }}</p>
+
+        <p>Late: {{ stats.late }}</p>
+
+        <p>Excused: {{ stats.excused }}</p>
+
+    </section>
+
+
+    <hr>
+
+
+    <section>
+
+        <h2>Students</h2>
+
+
+        {% for entry in entries %}
+
+            <article>
+
+                <h3>
+                    {{ entry.attendance.student.full_name }}
+                </h3>
+
+
+                <p>
+                    Current attendance:
+                    {{ entry.attendance.get_status_display }}
+                </p>
+
+
+                <form
+                    method="post"
+                    action="{% url 'lessons:attendance_mark' lesson.id entry.attendance.id %}"
+                >
+
+                    {% csrf_token %}
+
+                    {{ entry.form.as_p }}
+
+                    <button type="submit">
+                        Save Attendance
+                    </button>
+
+                </form>
+
+
+                {% if entry.attendance.recorded_at %}
+
+                    <p>
+                        Last recorded:
+                        {{ entry.attendance.recorded_at|date:"d.m.Y H:i" }}
+                    </p>
+
+                {% endif %}
+
+            </article>
+
+            <hr>
+
+
+        {% empty %}
+
+            <p>
+                No eligible students were found
+                for this lesson.
+            </p>
+
+        {% endfor %}
+
+    </section>
+
+{% endif %}
+
+
+<p>
+    <a href="{% url 'lessons:lesson_detail' lesson.id %}">
+        Back to Lesson
+    </a>
+</p>
+
+
+{% endblock %}

@@ -7,6 +7,8 @@ from apps.students.models import Student
 
 from .timezone_utils import resolve_local_datetime
 
+from .models import LessonAttendance
+
 
 class LessonTimeForm(forms.Form):
 
@@ -194,3 +196,38 @@ class GroupLessonCreateForm(LessonTimeForm):
 
 class LessonRescheduleForm(LessonTimeForm):
     pass
+
+
+class AttendanceMarkForm(forms.Form):
+
+    status = forms.ChoiceField(
+        choices=[
+            (
+                LessonAttendance.Status.PRESENT,
+                "Present"
+            ),
+            (
+                LessonAttendance.Status.ABSENT,
+                "Absent"
+            ),
+            (
+                LessonAttendance.Status.LATE,
+                "Late"
+            ),
+            (
+                LessonAttendance.Status.EXCUSED,
+                "Excused"
+            ),
+        ],
+        label="Attendance"
+    )
+
+    notes = forms.CharField(
+        required=False,
+        max_length=1000,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 2
+            }
+        )
+    )

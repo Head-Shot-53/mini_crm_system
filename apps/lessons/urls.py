@@ -15,4 +15,7 @@ urlpatterns = [
     path("<uuid:lesson_id>/", views.lesson_detail_view, name="lesson_detail"),
     path("<uuid:lesson_id>/reschedule/", views.lesson_reschedule_view, name="reschedule"),
     path("<uuid:lesson_id>/status/<str:action>/", views.lesson_status_view, name="lesson_status"),
+    
+    path("<uuid:lesson_id>/attendance/", views.lesson_attendance_view, name="attendance"),
+    path("<uuid:lesson_id>/attendance/<uuid:attendance_id>/mark/", views.attendance_mark_view, name="attendance_mark"),
 ]

@@ -11,6 +11,8 @@
 <h1>Lesson Details</h1>
 
 
+<!-- GENERAL INFORMATION -->
+
 <section>
 
     <h2>General Information</h2>
@@ -51,6 +53,7 @@
 
     {% endif %}
 
+
     <p>
         <strong>Status:</strong>
         {{ lesson.get_status_display }}
@@ -61,6 +64,8 @@
 
 <hr>
 
+
+<!-- SCHEDULE -->
 
 <section>
 
@@ -93,6 +98,8 @@
 <hr>
 
 
+<!-- NOTES -->
+
 <section>
 
     <h2>Notes</h2>
@@ -113,23 +120,27 @@
 <hr>
 
 
+<!-- LESSON MANAGEMENT -->
+
 <section>
 
     <h2>Lesson Management</h2>
 
 
+    <!-- RESCHEDULE -->
+
     {% if can_reschedule %}
 
         <p>
-
             <a href="{% url 'lessons:reschedule' lesson.id %}">
                 Reschedule Lesson
             </a>
-
         </p>
 
     {% endif %}
 
+
+    <!-- COMPLETE LESSON -->
 
     {% if can_complete %}
 
@@ -151,6 +162,8 @@
 
     {% endif %}
 
+
+    <!-- CANCEL LESSON -->
 
     {% if can_cancel %}
 
@@ -188,6 +201,8 @@
     {% endif %}
 
 
+    <!-- COMPLETED LESSON INFORMATION -->
+
     {% if lesson.status == "completed" %}
 
         <p>
@@ -196,9 +211,11 @@
 
         <p>
             <strong>Completed at:</strong>
-
             {{ lesson.completed_at|date:"d.m.Y H:i" }}
         </p>
+
+
+    <!-- CANCELLED LESSON INFORMATION -->
 
     {% elif lesson.status == "cancelled" %}
 
@@ -208,13 +225,11 @@
 
         <p>
             <strong>Cancelled at:</strong>
-
             {{ lesson.cancelled_at|date:"d.m.Y H:i" }}
         </p>
 
         <p>
             <strong>Reason:</strong>
-
             {{ lesson.cancellation_reason|default:"No reason provided." }}
         </p>
 
@@ -222,6 +237,34 @@
 
 </section>
 
+
+<!-- ATTENDANCE -->
+
+{% if lesson.status == "completed" %}
+
+    <hr>
+
+    <section>
+
+        <h2>Attendance</h2>
+
+        <p>
+            Manage attendance for this lesson.
+        </p>
+
+        <a href="{% url 'lessons:attendance' lesson.id %}">
+            Open Attendance
+        </a>
+
+    </section>
+
+{% endif %}
+
+
+<hr>
+
+
+<!-- NAVIGATION -->
 
 <p>
     <a href="{% url 'lessons:calendar' %}">
@@ -231,5 +274,3 @@
 
 
 {% endblock %}
-
-

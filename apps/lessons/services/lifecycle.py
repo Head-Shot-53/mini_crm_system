@@ -6,6 +6,7 @@ from apps.lessons.models import Lesson
 from apps.lessons.selectors import get_workspace_lessons
 
 from .availability import lock_workspace_for_scheduling
+from .attendance import initialize_lesson_attendance
 
 
 @transaction.atomic
@@ -92,6 +93,14 @@ def change_lesson_status(*, workspace, lesson_id, action, reason=""):
             "updated_at"
         ]
     )
+
+    if action == "complete":
+
+        initialize_lesson_attendance(
+            workspace=workspace,
+            lesson=lesson,
+            timestamp=now
+        )
 
     return lesson
 
