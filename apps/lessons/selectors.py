@@ -67,13 +67,35 @@ def get_calendar_lessons(*, workspace, period_start, period_end):
 
 
 def get_lesson_attendance(*, workspace, lesson):
-    return (
-        LessonAttendance.objects
-        .filter(
-            lesson=lesson,
-            lesson__workspace=workspace,
-            student__workspace=workspace
+    records = LessonAttendance.objects.filter(
+        lesson=lesson,
+        lesson__workspace=workspace,
+        lesson__subject__workspace=workspace,
+        student__workspace=workspace
+    )
+
+    valid_individual = Q(
+        lesson__student_id=F("student_id"),
+        lesson__group__isnull=True,
+        group_membership__isnull=True,
+    )
+
+    valid_group = Q(
+        lesson__student__isnull=True,
+        lesson__group__workspace=workspace,
+        lesson__group__subject_id=F(
+            "lesson__subject_id"
+        ),
+        group_membership__group_id=F(
+            "lesson__group_id"
+        ),
+        group_membership__student_id=F(
+            "student_id"
         )
+    )
+
+    return (
+        records.filter(valid_individual | valid_group)
         .select_related(
             "student",
             "recorded_by",

@@ -377,6 +377,16 @@ class LessonAttendance(models.Model):
                             "to another student."
                         )
 
+        if self.lesson_id and self.recorded_by_id:
+            if (
+                self.recorded_by_id
+                != self.lesson.workspace.owner_id
+            ):
+                errors["recorded_by"] = (
+                    "Attendance must be recorded "
+                    "by the workspace owner."
+                )
+
         if errors:
             raise ValidationError(errors)
 

@@ -96,7 +96,10 @@ def initialize_lesson_attendance(*, workspace, lesson, timestamp):
                 )
 
             if membership.student_id in seen_students:
-                continue
+                raise ValidationError(
+                    "Overlapping group membership history detected "
+                    "for this student and lesson."
+                )
 
             seen_students.add(membership.student_id)
 
