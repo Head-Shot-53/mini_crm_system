@@ -1,6 +1,6 @@
 from django.db.models import F, Q
 
-from .models import Assignment
+from .models import Assignment, AssignmentRecipient
 
 
 def get_workspace_assignments(*, workspace):
@@ -48,5 +48,46 @@ def get_workspace_assignments(*, workspace):
         )
         .select_related("subject", "student", "group", "lesson")
         .order_by("-created_at", "id",
+        )
+    )
+
+
+def get_assignment_recipients(*, workspace, assignment):
+    recipients = (
+        AssignmentRecipient.objects
+        .filter(
+            assignment=assignment,
+            assignment__workspace=workspace,
+            student__workspace=workspace
+        )
+    )
+
+    valid_individual = Q(
+        assignment__student_id=F("student_id"),
+        assignment__group__isnull=True,
+        group_membership__isnull=True
+    )
+
+    valid_group = Q(
+        assignment__student__isnull=True,
+        assignment__group__workspace=workspace,
+        group_membership__group_id=F("assignment__group_id"),
+        group_membership__student_id=F("student_id")
+    )
+
+    return (
+        recipients
+        .filter(
+            valid_individual | valid_group
+        )
+        .select_related(
+            "student",
+            "assignment",
+            "group_membership"
+        )
+        .order_by(
+            "student__last_name",
+            "student__first_name",
+            "id"
         )
     )

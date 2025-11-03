@@ -226,3 +226,149 @@ class Assignment(models.Model):
     def __str__(self):
         return self.title
 
+
+class AssignmentRecipient(models.Model):
+
+    class Source(models.TextChoices):
+        SNAPSHOT = "snapshot", "Publication snapshot"
+        MANUAL = "manual", "Manual assignment"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    assignment = models.ForeignKey(
+        Assignment,
+        on_delete=models.CASCADE,
+        related_name="recipients"
+    )
+
+    student = models.ForeignKey(
+        "students.Student",
+        on_delete=models.PROTECT,
+        related_name="assignment_recipients"
+    )
+
+    group_membership = models.ForeignKey(
+        "academics.GroupMembership",
+        on_delete=models.PROTECT,
+        related_name="assignment_recipients",
+        null=True,
+        blank=True
+    )
+
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.SNAPSHOT)
+
+    assigned_at = models.DateTimeField(default=timezone.now)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("student__last_name", "student__first_name", "id")
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=(
+                    "assignment",
+                    "student"
+                ),
+                name="hw_unique_assignment_recipient"
+            ),
+
+            models.CheckConstraint(
+                condition=models.Q(
+                    source__in=[
+                        "snapshot",
+                        "manual"
+                    ],
+                ),
+                name="hw_recipient_valid_source"
+            )
+        ]
+
+        indexes = [
+            models.Index(
+                fields=(
+                    "student",
+                    "assigned_at",
+                ),
+                name="hw_rec_student_time_idx"
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+
+        assignment = self.assignment
+
+        if assignment.workspace_id != self.student.workspace_id:
+            errors["student"] = (
+                "Recipient belongs to another workspace."
+            )
+
+        if assignment.published_at is None:
+            errors["assignment"] = (
+                "Recipients can only belong "
+                "to a published assignment."
+            )
+
+        if assignment.published_at is not None and self.assigned_at < assignment.published_at:
+            errors["assigned_at"] = (
+                "Recipient cannot be assigned "
+                "before assignment publication."
+            )
+
+        if assignment.student_id is not None:
+
+            if self.student_id != assignment.student_id:
+                errors["student"] = (
+                    "Individual assignment recipient "
+                    "must match the assignment student."
+                )
+
+            if self.group_membership_id is not None:
+                errors["group_membership"] = (
+                    "Individual assignment cannot "
+                    "have a group membership."
+                )
+
+        elif assignment.group_id is not None:
+
+            if self.group_membership_id is None:
+                errors["group_membership"] = (
+                    "Group assignment recipient requires "
+                    "a group membership."
+                )
+
+            else:
+                membership = self.group_membership
+
+                if  membership.group_id  != assignment.group_id:
+                    errors["group_membership"] = (
+                        "Membership belongs "
+                        "to another group."
+                    )
+
+                if  membership.student_id != self.student_id:
+                    errors["group_membership"] = (
+                        "Membership belongs "
+                        "to another student."
+                    )
+
+                if membership.joined_at > self.assigned_at:
+                    errors["group_membership"] = (
+                        "Student joined the group "
+                        "after assignment."
+                    )
+
+                if membership.left_at is not None and membership.left_at <= self.assigned_at:
+                    errors["group_membership"] = (
+                        "Student had already left "
+                        "the group."
+                    )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"{self.assignment.title} — {self.student.full_name}"
