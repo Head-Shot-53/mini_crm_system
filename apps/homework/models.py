@@ -5,6 +5,7 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db.models import F, Q
 from django.utils import timezone
+from django.conf import settings
 
 
 class Assignment(models.Model):
@@ -372,3 +373,280 @@ class AssignmentRecipient(models.Model):
 
     def __str__(self):
         return f"{self.assignment.title} — {self.student.full_name}"
+
+
+class AssignmentSubmission(models.Model):
+
+    class Status(models.TextChoices):
+        SUBMITTED = "submitted", "Submitted"
+        REVIEWED = "reviewed", "Reviewed"
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    recipient = models.OneToOneField(
+        AssignmentRecipient,
+        on_delete=models.PROTECT,
+        related_name="submission"
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.SUBMITTED
+    )
+
+    is_late = models.BooleanField(default=False)
+
+    first_submitted_at = models.DateTimeField()
+
+    last_submitted_at = models.DateTimeField()
+
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="reviewed_homework_submissions",
+        null=True,
+        blank=True
+    )
+
+    teacher_feedback = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-last_submitted_at", "id")
+
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=["submitted", "reviewed"]),
+                name="hw_submission_valid_status"
+            ),
+
+            models.CheckConstraint(
+                condition=models.Q(
+                    last_submitted_at__gte=models.F("first_submitted_at")),
+                name="hw_submission_valid_times"
+            ),
+
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status="submitted",
+                        reviewed_at__isnull=True,
+                        reviewed_by__isnull=True
+                    )
+                    |
+                    models.Q(
+                        status="reviewed",
+                        reviewed_at__isnull=False,
+                        reviewed_by__isnull=False
+                    )
+                ),
+                name="hw_submission_review_state"
+            ),
+        ]
+
+        indexes = [
+            models.Index(
+                fields=(
+                    "status",
+                    "last_submitted_at"
+                ),
+                name="hw_sub_status_time_idx"
+            )
+        ]
+
+    @property
+    def display_status(self):
+
+        if self.status == self.Status.REVIEWED:
+            return "reviewed"
+
+        if self.is_late:
+            return "late"
+
+        return "submitted"
+
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+
+        assignment = self.recipient.assignment
+        student = self.recipient.student
+
+        if assignment.workspace_id != student.workspace_id:
+            errors["recipient"] = (
+                "Submission recipient belongs "
+                "to another workspace."
+            )
+
+        if assignment.status == Assignment.Status.DRAFT:
+            errors["recipient"] = (
+                "Draft assignments cannot "
+                "have submissions."
+            )
+
+        if (
+            self.first_submitted_at
+            and timezone.is_naive(self.first_submitted_at)
+        ):
+            errors["first_submitted_at"] = (
+                "First submitted at must be timezone-aware."
+            )
+
+        if (
+            self.last_submitted_at
+            and timezone.is_naive(self.last_submitted_at)
+        ):
+            errors["last_submitted_at"] = (
+                "Last submitted at must be timezone-aware."
+            )
+
+        if self.last_submitted_at  < self.first_submitted_at:
+            errors["last_submitted_at"] = (
+                "Last submission cannot be earlier "
+                "than the first submission."
+            )
+
+        if self.reviewed_by_id:
+
+            if self.reviewed_by_id  != assignment.workspace.owner_id:
+                errors["reviewed_by"] = (
+                    "Submission must be reviewed "
+                    "by the workspace owner."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return (
+            f"{self.recipient.student.full_name} — "
+            f"{self.recipient.assignment.title}"
+        )
+
+
+class AssignmentSubmissionAttempt(models.Model):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
+    submission = models.ForeignKey(
+        AssignmentSubmission,
+        on_delete=models.PROTECT,
+        related_name="attempts"
+    )
+
+    revision = models.PositiveIntegerField()
+
+    answer_text = models.TextField(blank=True, default="")
+
+    answer_url = models.URLField(
+        blank=True,
+        default="",
+        max_length=500
+    )
+
+    submitted_at = models.DateTimeField()
+
+    is_late = models.BooleanField(default=False)
+
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="recorded_homework_attempts",
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-revision", "id")
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=("submission", "revision"),
+                name="hw_unique_submission_revision"
+            ),
+
+            models.CheckConstraint(
+                condition=models.Q(revision__gte=1),
+                name="hw_attempt_positive_revision"
+            ),
+
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(answer_text="")
+                    |
+                    ~models.Q(answer_url="")
+                ),
+                name="hw_attempt_has_content"
+            )
+        ]
+
+        indexes = [
+            models.Index(
+                fields=(
+                    "submission",
+                    "submitted_at"
+                ),
+                name="hw_attempt_sub_time_idx"
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+
+        self.answer_text = (self.answer_text or "").strip()
+
+        self.answer_url = (self.answer_url or "").strip()
+
+        if not self.answer_text and not self.answer_url:
+            errors["__all__"] = (
+                "Submission must contain text "
+                "or a URL."
+            )
+
+        if self.revision < 1:
+            errors["revision"] = (
+                "Revision must be at least 1."
+            )
+
+        if timezone.is_naive(self.submitted_at):
+            errors["submitted_at"] = (
+                "Submission time must be timezone-aware."
+            )
+
+        if self.recorded_by_id:
+
+            workspace = (self.submission.recipient.assignment.workspace)
+
+            if self.recorded_by_id != workspace.owner_id:
+                errors["recorded_by"] = (
+                    "Submission must be recorded "
+                    "by the workspace owner in V1."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"{self.submission} — revision {self.revision}"
+        

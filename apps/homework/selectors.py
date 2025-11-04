@@ -1,6 +1,6 @@
 from django.db.models import F, Q
 
-from .models import Assignment, AssignmentRecipient
+from .models import Assignment, AssignmentRecipient, AssignmentSubmission,AssignmentSubmissionAttempt
 
 
 def get_workspace_assignments(*, workspace):
@@ -89,5 +89,52 @@ def get_assignment_recipients(*, workspace, assignment):
             "student__last_name",
             "student__first_name",
             "id"
+        )
+    )
+
+
+def get_assignment_submissions(*, workspace, assignment):
+    return (
+        AssignmentSubmission.objects
+        .filter(
+            recipient__assignment=assignment,
+            recipient__assignment__workspace=workspace,
+            recipient__student__workspace=workspace,
+        )
+        .select_related(
+            "recipient",
+            "recipient__student",
+            "recipient__assignment",
+            "reviewed_by",
+        )
+        .order_by(
+            "recipient__student__last_name",
+            "recipient__student__first_name",
+            "id",
+        )
+    )
+
+def get_submission_attempts(*, workspace, submission):
+    return (
+        AssignmentSubmissionAttempt.objects
+        .filter(
+            submission=submission,
+            submission__recipient__assignment__workspace=workspace,
+            submission__recipient__student__workspace=workspace
+        )
+        .select_related("recorded_by")
+        .order_by("-revision", "id")
+    )
+
+
+def get_assignment_submission_overview(*, workspace, assignment):
+    return (
+        get_assignment_recipients(
+            workspace=workspace,
+            assignment=assignment
+        )
+        .select_related(
+            "submission",
+            "submission__reviewed_by"
         )
     )
