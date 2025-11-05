@@ -3,6 +3,21 @@ from django.db.models import F, Q
 from .models import Assignment, AssignmentRecipient, AssignmentSubmission,AssignmentSubmissionAttempt
 
 
+def get_assignment(*, workspace, assignment_id):
+    return (
+        Assignment.objects
+        .select_related(
+            "subject",
+            "student",
+            "group",
+            "lesson"
+        )
+        .get(
+            id=assignment_id,
+            workspace=workspace
+        )
+    )
+
 def get_workspace_assignments(*, workspace):
     valid_individual = Q(
         student__isnull=False,

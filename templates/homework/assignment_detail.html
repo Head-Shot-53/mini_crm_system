@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>{{ assignment.title }}</h1>
+
+<p>
+    <strong>Status:</strong>
+    {{ assignment.get_status_display }}
+</p>
+
+<p>
+    <strong>Subject:</strong>
+    {{ assignment.subject }}
+</p>
+
+<p>
+    <strong>Target:</strong>
+
+    {% if assignment.student %}
+        {{ assignment.student }}
+    {% elif assignment.group %}
+        {{ assignment.group }}
+    {% endif %}
+</p>
+
+{% if assignment.lesson %}
+    <p>
+        <strong>Lesson:</strong>
+        {{ assignment.lesson }}
+    </p>
+{% endif %}
+
+<p>
+    <strong>Deadline:</strong>
+
+    {% if assignment.due_at %}
+        {{ assignment.due_at }}
+    {% else %}
+        —
+    {% endif %}
+</p>
+
+{% if assignment.description %}
+    <hr>
+
+    <h2>Description</h2>
+
+    <p>
+        {{ assignment.description|linebreaksbr }}
+    </p>
+{% endif %}
+
+
+{% if assignment.status == "draft" %}
+
+    <hr>
+
+    <a
+        href="{% url 'homework:assignment-edit' assignment.id %}"
+    >
+        Edit draft
+    </a>
+
+    <form
+        method="post"
+        action="{% url 'homework:assignment-publish' assignment.id %}"
+    >
+        {% csrf_token %}
+
+        <button type="submit">
+            Publish
+        </button>
+    </form>
+
+{% endif %}
+
+
+<hr>
+
+<h2>Recipients</h2>
+
+{% if recipient_rows %}
+
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Reviewed</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% for row in recipient_rows %}
+
+                <tr>
+                    <td>
+                        {{ row.recipient.student }}
+                    </td>
+
+                    <td>
+                        {{ row.state }}
+                    </td>
+
+                    <td>
+                        {% if row.submission %}
+                            {{ row.submission.first_submitted_at }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if row.submission.reviewed_at %}
+                            {{ row.submission.reviewed_at }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+
+            {% endfor %}
+
+        </tbody>
+    </table>
+
+{% else %}
+
+    {% if assignment.status == "draft" %}
+        <p>
+            Recipients will be created when the
+            assignment is published.
+        </p>
+    {% else %}
+        <p>No recipients.</p>
+    {% endif %}
+
+{% endif %}
+
+<hr>
+
+<a href="{% url 'homework:assignment-list' %}">
+    Back to homework
+</a>
+
+{% endblock %}

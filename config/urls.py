@@ -26,6 +26,7 @@ urlpatterns = [
     path("accounts/",include("apps.accounts.urls")),
     path("students/", include("apps.students.urls")),
     path("lessons/", include("apps.lessons.urls")),
+    path("homework/", include("apps.homework.urls")),
 ]
 
 if settings.DEBUG:
