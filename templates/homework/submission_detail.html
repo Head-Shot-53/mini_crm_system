@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Submission Review</h1>
+
+<p>
+    <strong>Assignment:</strong>
+
+    <a
+        href="{% url 'homework:assignment-detail' assignment.id %}"
+    >
+        {{ assignment.title }}
+    </a>
+</p>
+
+<p>
+    <strong>Student:</strong>
+    {{ student }}
+</p>
+
+<p>
+    <strong>Subject:</strong>
+    {{ assignment.subject }}
+</p>
+
+<p>
+    <strong>Status:</strong>
+    {{ submission.get_status_display }}
+</p>
+
+<p>
+    <strong>First submitted:</strong>
+    {{ submission.first_submitted_at }}
+</p>
+
+<p>
+    <strong>Last submitted:</strong>
+    {{ submission.last_submitted_at }}
+</p>
+
+<p>
+    <strong>Late:</strong>
+
+    {% if submission.is_late %}
+        Yes
+    {% else %}
+        No
+    {% endif %}
+</p>
+
+
+<hr>
+
+
+<h2>Latest submission</h2>
+
+{% if latest_attempt %}
+
+    <p>
+        <strong>Revision:</strong>
+        {{ latest_attempt.revision }}
+    </p>
+
+    <p>
+        <strong>Submitted:</strong>
+        {{ latest_attempt.submitted_at }}
+    </p>
+
+    {% if latest_attempt.answer_text %}
+
+        <h3>Answer</h3>
+
+        <div>
+            {{ latest_attempt.answer_text|linebreaksbr }}
+        </div>
+
+    {% endif %}
+
+    {% if latest_attempt.answer_url %}
+
+        <p>
+            <strong>URL:</strong>
+
+            <a
+                href="{{ latest_attempt.answer_url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                Open submitted link
+            </a>
+        </p>
+
+    {% endif %}
+
+{% else %}
+
+    <p>No submission attempts found.</p>
+
+{% endif %}
+
+
+<hr>
+
+
+<h2>Revision history</h2>
+
+{% if attempts %}
+
+    {% for attempt in attempts %}
+
+        <article>
+
+            <h3>
+                Revision {{ attempt.revision }}
+            </h3>
+
+            <p>
+                Submitted:
+                {{ attempt.submitted_at }}
+            </p>
+
+            {% if attempt.is_late %}
+
+                <p>
+                    <strong>Late submission</strong>
+                </p>
+
+            {% endif %}
+
+            {% if attempt.answer_text %}
+
+                <div>
+                    {{ attempt.answer_text|linebreaksbr }}
+                </div>
+
+            {% endif %}
+
+            {% if attempt.answer_url %}
+
+                <p>
+                    <a
+                        href="{{ attempt.answer_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Open submitted link
+                    </a>
+                </p>
+
+            {% endif %}
+
+        </article>
+
+        <hr>
+
+    {% endfor %}
+
+{% else %}
+
+    <p>No revisions.</p>
+
+{% endif %}
+
+
+<h2>Teacher Review</h2>
+
+
+{% if submission.status == "submitted" %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div>
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div>
+
+            <label
+                for="{{ form.teacher_feedback.id_for_label }}"
+            >
+                {{ form.teacher_feedback.label }}
+            </label>
+
+            {{ form.teacher_feedback }}
+
+            {% if form.teacher_feedback.errors %}
+
+                <div>
+                    {{ form.teacher_feedback.errors }}
+                </div>
+
+            {% endif %}
+
+        </div>
+
+        <button type="submit">
+            Mark as reviewed
+        </button>
+
+    </form>
+
+{% else %}
+
+    <p>
+        <strong>Reviewed:</strong>
+        {{ submission.reviewed_at }}
+    </p>
+
+    {% if submission.reviewed_by %}
+
+        <p>
+            <strong>Reviewed by:</strong>
+            {{ submission.reviewed_by }}
+        </p>
+
+    {% endif %}
+
+    {% if submission.teacher_feedback %}
+
+        <h3>Feedback</h3>
+
+        <div>
+            {{ submission.teacher_feedback|linebreaksbr }}
+        </div>
+
+    {% else %}
+
+        <p>No feedback was provided.</p>
+
+    {% endif %}
+
+{% endif %}
+
+
+<hr>
+
+
+<a
+    href="{% url 'homework:assignment-detail' assignment.id %}"
+>
+    Back to assignment
+</a>
+
+{% endblock %}

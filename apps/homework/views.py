@@ -6,15 +6,17 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.homework.forms import GroupAssignmentDraftForm, IndividualAssignmentDraftForm
+from apps.homework.forms import GroupAssignmentDraftForm, IndividualAssignmentDraftForm, SubmissionReviewForm
 
 from apps.homework.models import Assignment, AssignmentSubmission
 
-from apps.homework.selectors import get_assignment, get_assignment_submission_overview, get_workspace_assignments
+from apps.homework.selectors import get_assignment, get_assignment_submission_overview, get_workspace_assignments, get_submission_detail
 from apps.homework.services.assignments import create_assignment_draft, update_assignment_draft
 from apps.homework.services.publication import publish_assignment
 
 from apps.workspaces.selectors import get_user_workspace
+
+from apps.homework.services.reviews import review_submission
 
 
 def _get_workspace(user):
@@ -407,3 +409,67 @@ def assignment_publish_view(request, assignment_id):
         "homework:assignment-detail",
         assignment_id=assignment_id
     )
+
+
+@login_required
+def submission_detail_view(request, submission_id):
+    workspace = _get_workspace(request.user)
+
+    try:
+        submission = get_submission_detail(
+            workspace=workspace,
+            submission_id=submission_id
+        )
+    except AssignmentSubmission.DoesNotExist:
+        raise Http404(
+            "Submission not found."
+        )
+
+    attempts = submission.ordered_attempts
+
+    latest_attempt = attempts[0] if attempts else None
+
+    if request.method == "POST":
+        form = SubmissionReviewForm(request.POST)
+
+        if form.is_valid():
+            try:
+                review_submission(
+                    workspace=workspace,
+                    submission_id=submission.id,
+                    reviewed_by=request.user,
+                    teacher_feedback=(
+                        form.cleaned_data["teacher_feedback"]
+                    )
+                )
+
+            except ValidationError as exc:
+                _add_validation_error(form, exc)
+
+            else:
+                messages.success(request,
+                    "Submission reviewed successfully."
+                )
+
+                return redirect(
+                    "homework:submission-detail",
+                    submission_id=submission.id
+                )
+
+    else:
+        form = SubmissionReviewForm(
+            initial={
+                "teacher_feedback": submission.teacher_feedback
+            }
+        )
+
+    context = {
+        "submission": submission,
+        "assignment": submission.recipient.assignment,
+        "student": submission.recipient.student,
+        "latest_attempt": latest_attempt,
+        "attempts": attempts,
+        "form": form
+    }
+
+    return render(request, "homework/submission_detail.html", context)

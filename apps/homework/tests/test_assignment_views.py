@@ -14,6 +14,7 @@ from apps.homework.models import  Assignment, AssignmentRecipient, AssignmentSub
 from apps.students.models import Student
 from apps.workspaces.models import Workspace
 
+from apps.homework.services.reviews import review_submission
 
 @pytest.fixture
 def workspace(db):
@@ -479,14 +480,19 @@ def test_assignment_detail_shows_reviewed(client, workspace, subject, student):
 
     now = timezone.now()
 
-    AssignmentSubmission.objects.create(
+    submission = AssignmentSubmission.objects.create(
         recipient=recipient,
-        status=AssignmentSubmission.Status.REVIEWED,
+        status=AssignmentSubmission.Status.SUBMITTED,
         first_submitted_at=now,
         last_submitted_at=now,
-        reviewed_at=now,
+        is_late=True
+    )
+
+    review_submission(
+        workspace=workspace,
+        submission_id=submission.id,
         reviewed_by=workspace.owner,
-        is_late=True,
+        teacher_feedback="Good work."
     )
 
     response = client.get(
@@ -498,7 +504,9 @@ def test_assignment_detail_shows_reviewed(client, workspace, subject, student):
 
     assert response.status_code == 200
 
-    assert "Reviewed" in response.content.decode()
+    content = response.content.decode()
+
+    assert "Reviewed" in content
 
 
 def test_create_group_assignment_draft(client, workspace, subject, deadline):

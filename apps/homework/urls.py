@@ -16,4 +16,6 @@ urlpatterns = [
     path("<uuid:assignment_id>/", views.assignment_detail_view, name="assignment-detail"),
     path("<uuid:assignment_id>/edit/", views.assignment_edit_view, name="assignment-edit"),
     path("<uuid:assignment_id>/publish/", views.assignment_publish_view, name="assignment-publish"),
+    
+    path("submissions/<uuid:submission_id>/", views.submission_detail_view, name="submission-detail"),
 ]

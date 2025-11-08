@@ -90,3 +90,19 @@ class GroupAssignmentDraftForm(BaseAssignmentDraftForm):
             .select_related("subject")
             .order_by("name")
         )
+
+
+
+class SubmissionReviewForm(forms.Form):
+    teacher_feedback = forms.CharField(
+        required=False,
+        label="Teacher feedback",
+        widget=forms.Textarea(
+            attrs={
+                "rows": 8,
+                "placeholder": (
+                    "Write feedback for the student..."
+                )
+            }
+        )
+    )

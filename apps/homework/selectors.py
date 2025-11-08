@@ -1,4 +1,5 @@
 from django.db.models import F, Q
+from django.db.models import Prefetch
 
 from .models import Assignment, AssignmentRecipient, AssignmentSubmission,AssignmentSubmissionAttempt
 
@@ -151,5 +152,37 @@ def get_assignment_submission_overview(*, workspace, assignment):
         .select_related(
             "submission",
             "submission__reviewed_by"
+        )
+    )
+
+
+def get_submission_detail(*, workspace, submission_id):
+    attempts_queryset = (
+        AssignmentSubmissionAttempt.objects
+        .select_related("recorded_by")
+        .order_by("-revision")
+    )
+
+    return (
+        AssignmentSubmission.objects
+        .select_related(
+            "recipient",
+            "recipient__student",
+            "recipient__assignment",
+            "recipient__assignment__subject",
+            "recipient__assignment__student",
+            "recipient__assignment__group",
+            "reviewed_by"
+        )
+        .prefetch_related(
+            Prefetch(
+                "attempts",
+                queryset=attempts_queryset,
+                to_attr="ordered_attempts"
+            )
+        )
+        .get(
+            id=submission_id,
+            recipient__assignment__workspace=workspace
         )
     )
